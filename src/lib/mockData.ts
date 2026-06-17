@@ -125,14 +125,14 @@ export const mockCourses: Course[] = [
   }
 ];
 
-export const mockUsers: Profile[] = [
-  ...mockTutors,
-  { user_id: "s101", full_name: "Keven Gulele", email: "keven.gulele@uem.ac.mz", role: "ESTUDANTE", university: "UEM", course: "Medicina", year_of_study: "2º Ano", phone: "+258 84 123 4567", avatar_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuA2Q2-DUXyCvl9clOmukXUATsRAaZoDLQ02qyBRMKJmFbJEq8oEsyQm2syEISHXyUBv9M-k2C8eg8ktUTgL9b1R1qOcpScYiIMkIvNx6UgGXdLcpMbShLjUYEMHfssgDcIvysxzcWklGQF9Zqy0_UKnS075gizNqUYyX63PiI2tQz2POwdpfXCttMNJcQIwkydkoWqH0fdUAZvngDSX0qwk5fdRnIJxeco1qfv2swshNVeIj9PBy1cFZbskAzAimPsGd5188-5D7V0j", status: "active" },
-  { user_id: "s102", full_name: "João Pedro", email: "joao.pedro@uem.ac.mz", role: "ESTUDANTE", university: "UEM", course: "Agronomia", year_of_study: "2º Ano", phone: "+258 82 444 5555", avatar_url: "", status: "active" },
-  { user_id: "s103", full_name: "Sandra Lima", email: "sandra.lima@isctem.ac.mz", role: "ESTUDANTE", university: "ISCTEM", course: "Farmácia", year_of_study: "3º Ano", phone: "+258 85 987 6543", avatar_url: "", status: "active" },
-  { user_id: "c_1", full_name: "Naeem Julaya", email: "naeem.coord@kingsman.academy", role: "COORDENADOR", university: "UEM", phone: "+258 84 555 6666", avatar_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuAjPQUtbSru5td0MzI9m150I0wQ-audjm_tAflSzXNrDesij9M8VtuHMmNYKGVcMZDZJNlBU_KS5OqcXPZq07QLRy8SXp3H3IgcVdCbFEo9KVA91T-3gj8xeAdGCS93w8ky0JKJjqfOXoRVng7jT0T83GOo7Q8fEoe1fnpKT6i4TlxKpKlEod0Q33GCqyVOuqeLVAqk-qABZknbYBUL5SN1S9Axc9V0gThcZFFcdGkmEE4U2FQKXYbUB2Nd_F-4esZ11VIwqUQbpFbG", status: "active" },
-  { user_id: "adm_1", full_name: "Kingsman Admin", email: "admin@kingsman.academy", role: "ADMIN", university: "Kingsman HQ", phone: "+258 84 000 0000", avatar_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuAjPQUtbSru5td0MzI9m150I0wQ-audjm_tAflSzXNrDesij9M8VtuHMmNYKGVcMZDZJNlBU_KS5OqcXPZq07QLRy8SXp3H3IgcVdCbFEo9KVA91T-3gj8xeAdGCS93w8ky0JKJjqfOXoRVng7jT0T83GOo7Q8fEoe1fnpKT6i4TlxKpKlEod0Q33GCqyVOuqeLVAqk-qABZknbYBUL5SN1S9Axc9V0gThcZFFcdGkmEE4U2FQKXYbUB2Nd_F-4esZ11VIwqUQbpFbG", status: "active" }
-];
+//export const mockUsers: Profile[] = [
+//  ...mockTutors,
+//  { user_id: "s101", full_name: "Keven Gulele", email: "keven.gulele@uem.ac.mz", role: "ESTUDANTE", university: "UEM", course: "Medicina", year_of_study: "2º Ano", phone: "+258 84 123 4567", avatar_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuA2Q2-DUXyCvl9clOmukXUATsRAaZoDLQ02qyBRMKJmFbJEq8oEsyQm2syEISHXyUBv9M-k2C8eg8ktUTgL9b1R1qOcpScYiIMkIvNx6UgGXdLcpMbShLjUYEMHfssgDcIvysxzcWklGQF9Zqy0_UKnS075gizNqUYyX63PiI2tQz2POwdpfXCttMNJcQIwkydkoWqH0fdUAZvngDSX0qwk5fdRnIJxeco1qfv2swshNVeIj9PBy1cFZbskAzAimPsGd5188-5D7V0j", status: "active" },
+//  { user_id: "s102", full_name: "João Pedro", email: "joao.pedro@uem.ac.mz", role: "ESTUDANTE", university: "UEM", course: "Agronomia", year_of_study: "2º Ano", phone: "+258 82 444 5555", avatar_url: "", status: "active" },
+//  { user_id: "s103", full_name: "Sandra Lima", email: "sandra.lima@isctem.ac.mz", role: "ESTUDANTE", university: "ISCTEM", course: "Farmácia", year_of_study: "3º Ano", phone: "+258 85 987 6543", avatar_url: "", status: "active" },
+//  { user_id: "c_1", full_name: "Naeem Julaya", email: "naeem.coord@kingsman.academy", role: "COORDENADOR", university: "UEM", phone: "+258 84 555 6666", avatar_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuAjPQUtbSru5td0MzI9m150I0wQ-audjm_tAflSzXNrDesij9M8VtuHMmNYKGVcMZDZJNlBU_KS5OqcXPZq07QLRy8SXp3H3IgcVdCbFEo9KVA91T-3gj8xeAdGCS93w8ky0JKJjqfOXoRVng7jT0T83GOo7Q8fEoe1fnpKT6i4TlxKpKlEod0Q33GCqyVOuqeLVAqk-qABZknbYBUL5SN1S9Axc9V0gThcZFFcdGkmEE4U2FQKXYbUB2Nd_F-4esZ11VIwqUQbpFbG", status: "active" },
+//  { user_id: "adm_1", full_name: "Kingsman Admin", email: "admin@kingsman.academy", role: "ADMIN", university: "Kingsman HQ", phone: "+258 84 000 0000", avatar_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuAjPQUtbSru5td0MzI9m150I0wQ-audjm_tAflSzXNrDesij9M8VtuHMmNYKGVcMZDZJNlBU_KS5OqcXPZq07QLRy8SXp3H3IgcVdCbFEo9KVA91T-3gj8xeAdGCS93w8ky0JKJjqfOXoRVng7jT0T83GOo7Q8fEoe1fnpKT6i4TlxKpKlEod0Q33GCqyVOuqeLVAqk-qABZknbYBUL5SN1S9Axc9V0gThcZFFcdGkmEE4U2FQKXYbUB2Nd_F-4esZ11VIwqUQbpFbG", status: "active" }
+//];
 
 export const mockStudentData = {
   name: "Keven Gulele",
@@ -170,7 +170,7 @@ export const mockLessons: Lesson[] = [
   { id: "l6", title: "Aula 6: Teste T de Student", description: "Comparação de médias de grupos independentes e emparelhados.", duration: 52, course_id: "c1", order_index: 6, is_active: true },
   { id: "l7", title: "Aula 7: Correlação Linear", description: "Cálculo e interpretação do coeficiente de Pearson.", duration: 45, course_id: "c1", order_index: 7, is_active: true },
   { id: "l8", title: "Aula 8: Regressão Linear Simples", description: "Criação de modelos preditivos e testes de hipóteses de inclinação.", duration: 50, course_id: "c1", order_index: 8, is_active: true },
-  
+
   // Lessons for Chemistry
   { id: "l201", title: "Aula 1: Hibridação do Átomo de Carbono", description: "Estudo dos orbitais sp3, sp2 e sp, geometria molecular e ligações sigma/pi.", duration: 42, course_id: "c2", order_index: 1, is_active: true },
   { id: "l202", title: "Aula 2: Nomenclatura IUPAC de Alcanos", description: "Regras sistemáticas para nomear alcanos e radicais alquil lineares e ramificados.", duration: 48, course_id: "c2", order_index: 2, is_active: true },
@@ -182,7 +182,7 @@ export const mockMaterials: Material[] = [
   { id: "m2", title: "Exercícios Resolvidos - Teste T.pdf", file_type: "pdf", file_size: 850000, file_url: "#", course_id: "c1", uploaded_by: "t1" },
   { id: "m3", title: "Tabela de Distribuição Normal.pdf", file_type: "pdf", file_size: 340000, file_url: "#", course_id: "c1", uploaded_by: "t1" },
   { id: "m4", title: "Apontamentos Teóricos de Bioestatística.pdf", file_type: "pdf", file_size: 3400000, file_url: "#", course_id: "c1", uploaded_by: "t1" },
-  
+
   // Chemistry materials
   { id: "m201", title: "Mecanismos de Substituição Nucleofílica (SN1 vs SN2).pdf", file_type: "pdf", file_size: 1800000, file_url: "#", course_id: "c2", uploaded_by: "t2" },
   { id: "m202", title: "Ficha de Exercícios 1: Hibridação e Acidez.pdf", file_type: "pdf", file_size: 620000, file_url: "#", course_id: "c2", uploaded_by: "t2" }
