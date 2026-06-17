@@ -5,17 +5,17 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from "@/components/ui/table";
-import { mockPayments, mockCourses, mockTutors } from "@/lib/mockData";
+import { mockPayments, mockCourses, mockTutors, mockUsers } from "@/lib/mockData";
 
 import { RouteGuard } from "@/components/auth/route-guard";
 
 export default function AdminDashboard() {
   // Pending payments from mock data
-  const [payments, setPayments] = useState(mockPayments.filter((p) => p.status === "pending"));
+  const [payments, setPayments] = useState(mockPayments.filter((p) => p.status === "PENDING"));
 
-  const handleAction = (id: string, newStatus: "confirmed" | "rejected") => {
+  const handleAction = (id: string, newStatus: "CONFIRMED" | "REJECTED") => {
     setPayments((prev) => prev.filter((p) => p.id !== id));
-    alert(`Pagamento ${id} foi ${newStatus === "confirmed" ? "confirmado" : "rejeitado"} com sucesso!`);
+    alert(`Pagamento ${id} foi ${newStatus === "CONFIRMED" ? "confirmado" : "rejeitado"} com sucesso!`);
   };
 
   return (
@@ -131,23 +131,28 @@ export default function AdminDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {payments.map((p) => (
+                  {payments.map((p) => {
+                    const student = mockUsers.find(u => u.user_id === p.student_id);
+                    const studentName = student ? student.full_name : p.student_id;
+                    const courseName = mockCourses.find(c => c.id === p.course_id)?.name || p.course_id;
+
+                    return (
                     <TableRow key={p.id}>
-                      <TableCell className="font-bold text-on-surface">{p.student}</TableCell>
-                      <TableCell>{p.course}</TableCell>
+                      <TableCell className="font-bold text-on-surface">{studentName}</TableCell>
+                      <TableCell>{courseName}</TableCell>
                       <TableCell className="font-semibold text-primary">{p.amount} MT</TableCell>
                       <TableCell>{p.method}</TableCell>
-                      <TableCell>{p.date}</TableCell>
+                      <TableCell>{p.created_at || "Hoje"}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <button
-                            onClick={() => handleAction(p.id, "confirmed")}
+                            onClick={() => handleAction(p.id, "CONFIRMED")}
                             className="px-2.5 py-1 bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 rounded text-xs font-bold transition-colors cursor-pointer"
                           >
                             Aprovar
                           </button>
                           <button
-                            onClick={() => handleAction(p.id, "rejected")}
+                            onClick={() => handleAction(p.id, "REJECTED")}
                             className="px-2.5 py-1 bg-red-500/15 text-red-400 hover:bg-red-500/25 rounded text-xs font-bold transition-colors cursor-pointer"
                           >
                             Rejeitar
@@ -155,7 +160,8 @@ export default function AdminDashboard() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             ) : (

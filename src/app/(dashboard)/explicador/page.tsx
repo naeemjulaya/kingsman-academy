@@ -4,14 +4,15 @@ import React from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from "@/components/ui/table";
-import { mockCourses, mockTutors } from "@/lib/mockData";
+import { mockCourses, mockTutors, mockCourseTutors } from "@/lib/mockData";
 
 import { RouteGuard } from "@/components/auth/route-guard";
 
 export default function TutorDashboard() {
   // Using Keven Gulele as the default tutor (id: t1)
   const tutor = mockTutors[0];
-  const courses = mockCourses.filter((c) => c.tutorId === tutor.id);
+  const tutorCourses = mockCourseTutors.filter(ct => ct.tutor_id === tutor.user_id).map(ct => ct.course_id);
+  const courses = mockCourses.filter((c) => tutorCourses.includes(c.id));
 
   const mockRecentStudents = [
     { id: "s1", name: "Artur Langa", course: "Bioestatística", progress: "60%", lastActive: "Há 10 min", grade: "16.4 Valor" },
@@ -33,13 +34,13 @@ export default function TutorDashboard() {
 
         <Card className="p-6">
           <p className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Total Estudantes</p>
-          <h3 className="font-playfair text-2xl md:text-3xl text-primary font-bold mt-1">{tutor.studentsCount}</h3>
+          <h3 className="font-playfair text-2xl md:text-3xl text-primary font-bold mt-1">124</h3>
           <p className="text-[10px] text-[#808080] font-semibold mt-1">👥 24 novos este mês</p>
         </Card>
 
         <Card className="p-6">
           <p className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Aulas Ministradas</p>
-          <h3 className="font-playfair text-2xl md:text-3xl text-primary font-bold mt-1">{tutor.lessonsCount}</h3>
+          <h3 className="font-playfair text-2xl md:text-3xl text-primary font-bold mt-1">36</h3>
           <p className="text-[10px] text-[#808080] font-semibold mt-1">🎥 8 transmissões agendadas</p>
         </Card>
 
@@ -127,10 +128,10 @@ export default function TutorDashboard() {
                 <div>
                   <div className="flex justify-between items-start">
                     <Badge variant="primary">{course.department}</Badge>
-                    <span className="text-[10px] text-[#808080] font-bold uppercase tracking-wider">{course.duration}</span>
+                    <span className="text-[10px] text-[#808080] font-bold uppercase tracking-wider">REF: {course.id}</span>
                   </div>
                   <h4 className="font-playfair text-lg text-on-surface font-bold mt-3">{course.name}</h4>
-                  <p className="text-xs text-on-surface-variant mt-1">Preço: {course.price} MT/mês</p>
+                  <p className="text-xs text-on-surface-variant mt-1">Preço: {course.price_monthly} MT/mês</p>
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button className="flex-1 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-xs text-on-surface font-bold border border-border/10 transition-colors cursor-pointer">

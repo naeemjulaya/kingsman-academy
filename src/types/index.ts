@@ -1,91 +1,137 @@
-export interface Cadeira {
-  id: string;
-  name: string;
-  department: string;
-  price: number;
-  description: string;
-  syllabus: string;
-  image: string;
-  tutorId: string;
-  status: "active" | "inactive";
-  duration: string;
-  level: string;
-  progress?: number;
-}
+export type UserRole = 'ESTUDANTE' | 'EXPLICADOR' | 'COORDENADOR' | 'ADMIN';
+export type UserStatus = 'active' | 'pending' | 'inactive';
+export type PaymentStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED';
+export type EnrollmentStatus = 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+export type PaymentMethod = 'MPESA' | 'EMOLA' | 'TRANSFERENCIA';
 
-export interface Explicador {
-  id: string;
-  name: string;
-  specialty: string;
-  bio: string;
-  avatar: string;
-  rating: number;
-  reviewsCount: number;
-  studentsCount: number;
-  lessonsCount: number;
-  earnings: number;
-  status: "active" | "pending" | "inactive";
-  courses: string[];
-}
-
-export interface Utilizador {
-  id: string;
-  name: string;
+export interface Profile {
+  user_id: string;
+  full_name: string;
   email: string;
-  role: "estudante" | "explicador" | "coordenador" | "admin";
-  university: string;
-  courseOfStudy?: string;
-  yearOfStudy?: string;
-  contact?: string;
-  avatar: string;
-  status: "active" | "inactive" | "pending";
+  phone?: string;
+  university?: string;
+  course?: string;
+  year_of_study?: number;
+  role: UserRole;
+  status: UserStatus;
+  avatar_url?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export interface Pagamento {
+export interface Course {
   id: string;
-  student: string;
-  studentId: string;
-  course: string;
-  courseId: string;
+  name: string;
+  department?: string;
+  university?: string;
+  description?: string;
+  price_monthly?: number;
+  price_per_lesson?: number;
+  max_tutors: number;
+  youtube_playlist_id?: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CourseTutor {
+  id: string;
+  course_id: string;
+  tutor_id: string;
+  topics?: string[];
+  is_active: boolean;
+  assigned_at?: string;
+}
+
+export interface Enrollment {
+  id: string;
+  student_id: string;
+  course_id: string;
+  status: EnrollmentStatus;
+  payment_status: PaymentStatus;
+  start_date?: string;
+  end_date?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Payment {
+  id: string;
+  student_id: string;
+  course_id: string;
   amount: number;
-  method: "M-Pesa" | "e-Mola" | "Transferência";
-  date: string;
-  status: "pending" | "confirmed" | "rejected";
-  proofUrl: string;
+  method: PaymentMethod;
+  status: PaymentStatus;
+  proof_url?: string;
+  confirmed_by?: string;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export interface Aula {
+export interface Lesson {
   id: string;
+  course_id: string;
   title: string;
-  description: string;
-  duration: string;
-  videoUrl?: string;
-  courseId: string;
-  status: "locked" | "available" | "completed";
-  order: number;
+  topic?: string;
+  description?: string;
+  youtube_link?: string;
+  duration?: number;
+  order_index: number;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Material {
   id: string;
+  lesson_id?: string;
+  course_id: string;
   title: string;
-  type: "pdf" | "slides" | "exercise_sheet";
-  size: string;
-  downloadUrl: string;
-  courseId: string;
-  lessonId?: string;
+  file_url: string;
+  file_type?: string;
+  file_size?: number;
+  uploaded_by: string;
+  created_at?: string;
 }
 
-export interface Mensagem {
+export interface LessonCompletion {
   id: string;
-  senderName: string;
-  senderAvatar: string;
-  senderRole: string;
-  content: string;
-  timestamp: string;
-  unread: boolean;
-  chatId: string;
+  student_id: string;
+  lesson_id: string;
+  progress_percent: number;
+  watched_duration?: number;
+  completed_at?: string;
 }
 
+export interface Message {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  is_read: boolean;
+  created_at?: string;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  content: string;
+  is_read: boolean;
+  metadata?: any;
+  created_at?: string;
+}
+
+export interface Analytic {
+  id: string;
+  metric_type: string;
+  metric_value: number;
+  recorded_at?: string;
+}
+
+// UI-specific wrapper for Chat interface that might combine messages/profiles
 export interface Chat {
   id: string;
   participantName: string;
@@ -94,13 +140,4 @@ export interface Chat {
   lastMessage: string;
   lastMessageTime: string;
   unreadCount: number;
-}
-
-export interface Notificacao {
-  id: string;
-  title: string;
-  message: string;
-  type: "payment" | "lesson" | "system" | "message";
-  date: string;
-  unread: boolean;
 }

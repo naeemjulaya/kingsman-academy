@@ -42,13 +42,13 @@ export default function CourseDetail({ params }: PageProps) {
 
   const handlePrevLesson = () => {
     if (!selectedLesson) return;
-    const prev = lessons.find((l) => l.order === selectedLesson.order - 1);
+    const prev = lessons.find((l) => l.order_index === selectedLesson.order_index - 1);
     if (prev) setSelectedLesson(prev);
   };
 
   const handleNextLesson = () => {
     if (!selectedLesson) return;
-    const next = lessons.find((l) => l.order === selectedLesson.order + 1);
+    const next = lessons.find((l) => l.order_index === selectedLesson.order_index + 1);
     if (next) setSelectedLesson(next);
   };
 
@@ -64,15 +64,15 @@ export default function CourseDetail({ params }: PageProps) {
           </h2>
           <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-on-surface-variant">
             <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm">schedule</span> {course.duration}
+              <span className="material-symbols-outlined text-sm">payments</span> {course.price_monthly} MT/mês
             </span>
             <span>•</span>
             <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm">school</span> {course.level}
+              <span className="material-symbols-outlined text-sm">school</span> {course.department}
             </span>
             <span>•</span>
             <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm">group</span> {tutor.name}
+              <span className="material-symbols-outlined text-sm">group</span> {tutor.full_name}
             </span>
           </div>
         </div>
@@ -159,7 +159,7 @@ export default function CourseDetail({ params }: PageProps) {
                           {mat.title}
                         </span>
                         <span className="text-[9px] text-on-surface-variant font-bold block mt-0.5">
-                          {mat.size} • PDF
+                          {mat.file_size ? (mat.file_size / 1024 / 1024).toFixed(2) + ' MB' : 'Desconhecido'} • {mat.file_type?.toUpperCase()}
                         </span>
                       </div>
                       <button className="text-primary hover:text-[#FF48FF] cursor-pointer">
@@ -175,22 +175,21 @@ export default function CourseDetail({ params }: PageProps) {
             <TabsContent value="explicadores" className="mt-6">
               <Card className="p-6 flex flex-col sm:flex-row gap-6 items-start">
                 <div className="w-20 h-20 rounded-full overflow-hidden border border-primary/20 shrink-0 mx-auto sm:mx-0">
-                  <img className="w-full h-full object-cover" src={tutor.avatar} alt={tutor.name} />
+                  <img className="w-full h-full object-cover" src={tutor.avatar_url || ''} alt={tutor.full_name} />
                 </div>
                 <div className="space-y-3 text-center sm:text-left flex-1">
                   <div>
-                    <h4 className="font-playfair text-xl font-bold text-on-surface">{tutor.name}</h4>
+                    <h4 className="font-playfair text-xl font-bold text-on-surface">{tutor.full_name}</h4>
                     <p className="text-primary text-xs font-bold uppercase tracking-widest mt-0.5">
-                      {tutor.specialty}
+                      {tutor.course} • {tutor.university}
                     </p>
                   </div>
                   <p className="text-sm text-on-surface-variant/90 leading-relaxed">
-                    {tutor.bio}
+                    Explicador certificado da Kingsman Academy.
                   </p>
                   <div className="flex justify-center sm:justify-start gap-6 text-xs text-[#808080] font-semibold pt-2">
-                    <span>⭐ {tutor.rating} Classificação</span>
-                    <span>👤 {tutor.studentsCount} Alunos</span>
-                    <span>📚 {tutor.lessonsCount} Aulas</span>
+                    <span>👤 Explicador Oficial</span>
+                    <span>📚 {course.department}</span>
                   </div>
                 </div>
               </Card>
@@ -231,7 +230,7 @@ export default function CourseDetail({ params }: PageProps) {
             <div>
               <span className="text-[#808080] text-xs font-bold uppercase tracking-wider block">Preço de Inscrição</span>
               <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-3xl font-bold text-primary">{course.price} MT</span>
+                <span className="text-3xl font-bold text-primary">{course.price_monthly} MT</span>
                 <span className="text-on-surface-variant text-xs font-semibold">/mês</span>
               </div>
             </div>

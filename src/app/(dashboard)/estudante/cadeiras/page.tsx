@@ -2,10 +2,10 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
-import { mockCourses, mockTutors } from "@/lib/mockData";
+import { mockCourses, mockTutors, mockCourseTutors } from "@/lib/mockData";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select_input";
+import { SelectInput } from "@/components/ui/select_input";
 import { Badge } from "@/components/ui/badge";
 
 export default function CourseCatalogue() {
@@ -19,10 +19,12 @@ export default function CourseCatalogue() {
   const filteredCourses = useMemo(() => {
     return mockCourses.filter((course) => {
       const matchesSearch = course.name.toLowerCase().includes(search.toLowerCase()) ||
-        course.description.toLowerCase().includes(search.toLowerCase());
+        course.description?.toLowerCase().includes(search.toLowerCase());
 
       const matchesDepartment = department === "all" || course.department === department;
-      const matchesLevel = level === "all" || course.level === level;
+      // Level doesn't exist in DB schema anymore, we will ignore it or you can change it to search another field.
+      // For now we'll just allow all.
+      const matchesLevel = level === "all";
 
       return matchesSearch && matchesDepartment && matchesLevel;
     });
@@ -74,7 +76,7 @@ export default function CourseCatalogue() {
 
         {/* Filters */}
         <div className="w-full md:w-auto flex flex-col sm:flex-row gap-4 items-center">
-          <Select
+          <SelectInput
             value={department}
             onChange={(e) => {
               setDepartment(e.target.value);
@@ -88,9 +90,9 @@ export default function CourseCatalogue() {
             <option value="Biologia">Biologia</option>
             <option value="Agronomia">Agronomia</option>
             <option value="Informática">Informática</option>
-          </Select>
+          </SelectInput>
 
-          <Select
+          <SelectInput
             value={level}
             onChange={(e) => {
               setLevel(e.target.value);
@@ -103,7 +105,7 @@ export default function CourseCatalogue() {
             <option value="2º Ano">2º Ano</option>
             <option value="3º Ano">3º Ano</option>
             <option value="Finalista">Finalista</option>
-          </Select>
+          </SelectInput>
         </div>
       </Card>
 
@@ -111,13 +113,16 @@ export default function CourseCatalogue() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {paginatedCourses.length > 0 ? (
           paginatedCourses.map((course) => {
-            const tutor = mockTutors.find((t) => t.id === course.tutorId) || mockTutors[0];
+            const courseTutor = mockCourseTutors.find((ct) => ct.course_id === course.id);
+            const tutor = courseTutor ? mockTutors.find((t) => t.user_id === courseTutor.tutor_id) : null;
+            const tutorName = tutor ? tutor.full_name : "Não Atribuído";
+            const tutorAvatar = tutor ? tutor.avatar_url : "";
             return (
               <Card key={course.id} className="p-6 group hover:border-primary/40 transition-all flex flex-col justify-between h-full">
                 <div>
                   <div className="flex justify-between items-start mb-6">
                     <Badge variant="primary">{course.department}</Badge>
-                    <span className="text-sm font-bold text-on-surface-variant">{course.price} MT/mês</span>
+                    <span className="text-sm font-bold text-on-surface-variant">{course.price_monthly} MT/mês</span>
                   </div>
                   <Link href={`/estudante/cadeiras/${course.id}`}>
                     <h4 className="font-playfair text-xl font-bold text-on-surface mb-2 group-hover:text-primary transition-colors cursor-pointer">
@@ -125,7 +130,7 @@ export default function CourseCatalogue() {
                     </h4>
                   </Link>
                   <p className="text-xs text-on-surface-variant font-bold uppercase tracking-wider mb-4">
-                    Nível: {course.level} • Duração: {course.duration}
+                    Departamento: {course.department}
                   </p>
                   <p className="text-sm text-on-surface-variant/80 mb-6 leading-relaxed line-clamp-3">
                     {course.description}
@@ -135,9 +140,9 @@ export default function CourseCatalogue() {
                 <div className="flex items-center justify-between border-t border-white/5 pt-4">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/20">
-                      <img className="w-full h-full object-cover" src={tutor.avatar} alt={tutor.name} />
+                      <img className="w-full h-full object-cover" src={tutorAvatar || ""} alt={tutorName} />
                     </div>
-                    <span className="text-xs font-semibold text-on-surface">{tutor.name}</span>
+                    <span className="text-xs font-semibold text-on-surface">{tutorName}</span>
                   </div>
                   <Link href={`/estudante/cadeiras/${course.id}`}>
                     <button className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer">

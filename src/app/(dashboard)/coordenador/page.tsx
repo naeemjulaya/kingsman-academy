@@ -3,7 +3,7 @@
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { mockCourses, mockTutors } from "@/lib/mockData";
+import { mockCourses, mockTutors, mockCourseTutors } from "@/lib/mockData";
 
 import { RouteGuard } from "@/components/auth/route-guard";
 
@@ -49,7 +49,8 @@ export default function CoordinatorDashboard() {
           <h3 className="font-playfair text-xl font-bold">Monitor de Cadeiras Académicas</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {mockCourses.slice(0, 4).map((course) => {
-              const tutor = mockTutors.find((t) => t.id === course.tutorId) || mockTutors[0];
+              const courseTutor = mockCourseTutors.find((ct) => ct.course_id === course.id);
+              const tutor = courseTutor ? mockTutors.find((t) => t.user_id === courseTutor.tutor_id) || mockTutors[0] : mockTutors[0];
               return (
                 <Card key={course.id} className="p-5 flex flex-col justify-between gap-4">
                   <div>
@@ -58,7 +59,7 @@ export default function CoordinatorDashboard() {
                       <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Ativa</span>
                     </div>
                     <h4 className="font-playfair text-lg text-on-surface font-bold mt-3">{course.name}</h4>
-                    <p className="text-xs text-on-surface-variant mt-1">Responsável: {tutor.name}</p>
+                    <p className="text-xs text-on-surface-variant mt-1">Responsável: {tutor.full_name}</p>
                   </div>
                   <div className="flex justify-between items-center border-t border-white/5 pt-3 mt-2">
                     <span className="text-xs text-on-surface-variant/80 font-semibold">Semestre de Junho</span>

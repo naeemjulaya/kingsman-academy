@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-type PaymentMethod = "M-Pesa" | "e-Mola" | "Banco";
+type PaymentMethod = "MPESA" | "EMOLA" | "TRANSFERENCIA";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -16,7 +16,7 @@ export default function CheckoutPage() {
 
   const course = mockCourses.find((c) => c.id === courseId) || mockCourses[0];
 
-  const [method, setMethod] = useState<PaymentMethod>("M-Pesa");
+  const [method, setMethod] = useState<PaymentMethod>("MPESA");
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -107,12 +107,12 @@ export default function CheckoutPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* M-Pesa */}
                 <div
-                  onClick={() => setMethod("M-Pesa")}
+                  onClick={() => setMethod("MPESA")}
                   className={`glass-panel p-5 rounded-xl border relative cursor-pointer group hover:scale-[1.02] transition-all flex flex-col justify-between ${
-                    method === "M-Pesa" ? "border-2 border-primary" : "border-primary/10"
+                    method === "MPESA" ? "border-2 border-primary" : "border-primary/10"
                   }`}
                 >
-                  {method === "M-Pesa" && (
+                  {method === "MPESA" && (
                     <div className="absolute top-2.5 right-2.5 text-primary">
                       <span className="material-symbols-outlined text-md" style={{ fontVariationSettings: "'FILL' 1" }}>
                         check_circle
@@ -130,12 +130,12 @@ export default function CheckoutPage() {
 
                 {/* e-Mola */}
                 <div
-                  onClick={() => setMethod("e-Mola")}
+                  onClick={() => setMethod("EMOLA")}
                   className={`glass-panel p-5 rounded-xl border relative cursor-pointer group hover:scale-[1.02] transition-all flex flex-col justify-between ${
-                    method === "e-Mola" ? "border-2 border-primary" : "border-primary/10"
+                    method === "EMOLA" ? "border-2 border-primary" : "border-primary/10"
                   }`}
                 >
-                  {method === "e-Mola" && (
+                  {method === "EMOLA" && (
                     <div className="absolute top-2.5 right-2.5 text-primary">
                       <span className="material-symbols-outlined text-md" style={{ fontVariationSettings: "'FILL' 1" }}>
                         check_circle
@@ -153,12 +153,12 @@ export default function CheckoutPage() {
 
                 {/* Bank Transfer */}
                 <div
-                  onClick={() => setMethod("Banco")}
+                  onClick={() => setMethod("TRANSFERENCIA")}
                   className={`glass-panel p-5 rounded-xl border relative cursor-pointer group hover:scale-[1.02] transition-all flex flex-col justify-between ${
-                    method === "Banco" ? "border-2 border-primary" : "border-primary/10"
+                    method === "TRANSFERENCIA" ? "border-2 border-primary" : "border-primary/10"
                   }`}
                 >
-                  {method === "Banco" && (
+                  {method === "TRANSFERENCIA" && (
                     <div className="absolute top-2.5 right-2.5 text-primary">
                       <span className="material-symbols-outlined text-md" style={{ fontVariationSettings: "'FILL' 1" }}>
                         check_circle
@@ -185,7 +185,7 @@ export default function CheckoutPage() {
                 </h4>
               </div>
 
-              {method === "M-Pesa" && (
+              {method === "MPESA" && (
                 <ol className="space-y-3 text-sm text-on-surface-variant font-medium">
                   <li className="flex gap-3">
                     <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">1</span>
@@ -201,12 +201,12 @@ export default function CheckoutPage() {
                   </li>
                   <li className="flex gap-3">
                     <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">4</span>
-                    <p>Introduza o valor total de <span className="text-primary font-bold">{course.price} MT</span>.</p>
+                    <p>Introduza o valor total de <span className="text-primary font-bold">{course.price_monthly} MT</span>.</p>
                   </li>
                 </ol>
               )}
 
-              {method === "e-Mola" && (
+              {method === "EMOLA" && (
                 <ol className="space-y-3 text-sm text-on-surface-variant font-medium">
                   <li className="flex gap-3">
                     <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">1</span>
@@ -222,12 +222,12 @@ export default function CheckoutPage() {
                   </li>
                   <li className="flex gap-3">
                     <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">4</span>
-                    <p>Confirme o valor de <span className="text-primary font-bold">{course.price} MT</span>.</p>
+                    <p>Confirme o valor de <span className="text-primary font-bold">{course.price_monthly} MT</span>.</p>
                   </li>
                 </ol>
               )}
 
-              {method === "Banco" && (
+              {method === "TRANSFERENCIA" && (
                 <div className="space-y-4 text-sm text-on-surface-variant font-medium">
                   <p>Efectue a transferência bancária para a nossa conta institucional e anexe o comprovativo:</p>
                   <div className="bg-[#0A0A0A]/40 p-4 rounded-lg border border-amber-500/10 space-y-2 font-mono text-xs text-amber-200">
@@ -282,7 +282,7 @@ export default function CheckoutPage() {
                     <p className="text-sm font-bold text-on-surface">{course.name}</p>
                     <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wide mt-0.5">Matrícula Semestral</p>
                   </div>
-                  <span className="text-sm font-bold text-on-surface">{course.price} MT</span>
+                  <span className="text-sm font-bold text-on-surface">{course.price_monthly} MT</span>
                 </div>
 
                 <div className="flex justify-between text-xs text-on-surface-variant font-bold">
@@ -293,7 +293,7 @@ export default function CheckoutPage() {
 
               <div className="flex justify-between items-center pt-4 border-t border-border/10">
                 <span className="font-playfair text-base font-bold text-on-surface-variant">TOTAL</span>
-                <span className="font-playfair text-3xl font-bold text-primary">{course.price} MT</span>
+                <span className="font-playfair text-3xl font-bold text-primary">{course.price_monthly} MT</span>
               </div>
 
               <Button
@@ -339,7 +339,7 @@ export default function CheckoutPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-[#808080]">Valor:</span>
-              <span className="font-bold">{course.price} MT</span>
+              <span className="font-bold">{course.price_monthly} MT</span>
             </div>
             <div className="flex justify-between">
               <span className="text-[#808080]">Estado:</span>

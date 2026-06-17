@@ -3,38 +3,51 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SelectInput } from "@/components/ui/select_input";
+import { createClient } from "@/lib/supabase/client";
 
 export default function RegisterPage() {
   const router = useRouter();
   const supabase = createClient();
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 4;
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Form states
-  const [formData, setFormData] = useState({
-    nome: "",
+  // Form states mapped to DB schema
+  const [formData, setFormData] = useState<{
+    full_name: string;
+    email: string;
+    password: string;
+    confirmarPassword: string;
+    phone: string;
+    university: string;
+    course: string;
+    year_of_study: number;
+    termsAccepted: boolean;
+  }>({
+    full_name: "",
     email: "",
     password: "",
     confirmarPassword: "",
-    contacto: "",
-    linkedin: "",
-    universidade: "UEM - Univ. Eduardo Mondlane",
-    curso: "",
-    ano: "1º Ano",
+    phone: "",
+    university: "UEM",
+    course: "",
+    year_of_study: 1,
     termsAccepted: false,
   });
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === "year_of_study") {
+      setFormData((prev) => ({ ...prev, year_of_study: parseInt(value, 10) }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,66 +65,67 @@ export default function RegisterPage() {
     }
   };
 
-  const handleRegister = async () => {
-    setError("");
-    setLoading(true);
-
-    if (formData.password !== formData.confirmarPassword) {
-      setError("As palavras-passe não coincidem");
-      setLoading(false);
-      return;
-    }
-
-    // 1. Cria user no Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-    });
-
-    if (authError || !authData.user) {
-      setError(authError?.message || "Erro ao criar conta");
-      setLoading(false);
-      return;
-    }
-
-    // Parse year of study (e.g. "1º Ano" -> 1)
-    const yearParsed = parseInt(formData.ano.replace(/\D/g, "")) || 1;
-
-    // 2. Cria profile na tabela profiles
-    const { error: profileError } = await supabase.from("profiles").insert({
-      user_id: authData.user.id,
-      full_name: formData.nome,
-      email: formData.email,
-      phone: formData.contacto,
-      university: formData.universidade,
-      course: formData.curso,
-      year_of_study: yearParsed,
-      role: "ESTUDANTE", // default
-      status: "active",
-      avatar_url: avatarPreview || undefined
-    });
-
-    if (profileError) {
-      setError("Erro ao criar perfil. Tente novamente.");
-      setLoading(false);
-      return;
-    }
-
-    setLoading(false);
-    router.push("/login?registered=true");
-  };
-
-  const nextStep = () => {
+  const nextStep = async () => {
     if (currentStep < totalSteps) {
       setCurrentStep((prev) => prev + 1);
     } else {
-      handleRegister();
+      // Final submission with Supabase
+      if (formData.password !== formData.confirmarPassword) {
+        setError("As senhas não coincidem.");
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        // 1. Sign up user (Trigger creates row in profiles table with default role ESTUDANTE)
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              full_name: formData.full_name,
+            }
+          }
+        });
+
+        if (authError) throw authError;
+
+        if (authData.user) {
+          // 2. Update the profile row that was created by the trigger
+          const { error: profileError } = await supabase
+            .from("profiles")
+            .update({
+              full_name: formData.full_name,
+              phone: formData.phone,
+              university: formData.university,
+              course: formData.course,
+              year_of_study: formData.year_of_study,
+              // avatar_url logic would require storage upload first, skipping for now
+            })
+            .eq("user_id", authData.user.id);
+
+          if (profileError) throw profileError;
+
+          // Note: Depending on email confirmation settings in Supabase, 
+          // the user might need to check their email first. 
+          // If auto-confirm is enabled, they are logged in.
+          router.push("/estudante");
+        }
+      } catch (err: any) {
+        console.error("Registration error:", err);
+        setError(err.message || "Ocorreu um erro ao criar a conta.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   const prevStep = () => {
     if (currentStep > 1) {
       setCurrentStep((prev) => prev - 1);
+      setError(null);
     }
   };
 
@@ -139,16 +153,15 @@ export default function RegisterPage() {
             return (
               <div key={s.step} className="relative z-10 flex flex-col items-center gap-1.5">
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border transition-all ${
-                    isCompleted
-                      ? "bg-primary text-black border-transparent"
-                      : isActive
-                        ? "bg-primary text-black border-transparent shadow-[0_0_15px_rgba(255,170,245,0.4)]"
-                        : "bg-surface-container-high text-on-surface-variant border-border/10"
-                  }`}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border transition-all ${isCompleted
+                    ? "bg-primary text-black border-transparent"
+                    : isActive
+                      ? "bg-primary text-black border-transparent shadow-[0_0_15px_rgba(255,170,245,0.4)]"
+                      : "bg-surface-container-high text-on-surface-variant border-border/10"
+                    }`}
                 >
                   {isCompleted ? (
-                    <span className="material-symbols-outlined text-xs font-bold">check</span>
+                    <span className="material-symbols-outlined text-sm font-bold">check</span>
                   ) : (
                     s.step
                   )}
@@ -166,7 +179,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-md glass-panel rounded-xl p-6 shadow-2xl relative overflow-hidden">
         <div className="scanning-line opacity-20"></div>
 
-        <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+        <form onSubmit={(e) => e.preventDefault()} className="space-y-4 relative z-10">
           {/* Step 1: Conta */}
           {currentStep === 1 && (
             <div className="space-y-4">
@@ -176,8 +189,8 @@ export default function RegisterPage() {
                   <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">Nome Completo</label>
                   <Input
                     type="text"
-                    name="nome"
-                    value={formData.nome}
+                    name="full_name"
+                    value={formData.full_name}
                     onChange={handleInputChange}
                     placeholder="Ex: Artur Langa"
                     required
@@ -242,21 +255,11 @@ export default function RegisterPage() {
                   <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">Contacto (Telemóvel)</label>
                   <Input
                     type="tel"
-                    name="contacto"
-                    value={formData.contacto}
+                    name="phone"
+                    value={formData.phone}
                     onChange={handleInputChange}
                     placeholder="+258 84 000 0000"
                     required
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">LinkedIn (Opcional)</label>
-                  <Input
-                    type="url"
-                    name="linkedin"
-                    value={formData.linkedin}
-                    onChange={handleInputChange}
-                    placeholder="linkedin.com/in/usuario"
                   />
                 </div>
               </div>
@@ -270,20 +273,20 @@ export default function RegisterPage() {
               <div className="space-y-3">
                 <div>
                   <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">Universidade</label>
-                  <SelectInput name="universidade" value={formData.universidade} onChange={handleInputChange}>
-                    <option>UEM - Univ. Eduardo Mondlane</option>
-                    <option>UP - Univ. Pedagógica</option>
-                    <option>ISCTEM</option>
-                    <option>USTM</option>
-                    <option>UCM - Univ. Católica</option>
+                  <SelectInput name="university" value={formData.university} onChange={handleInputChange}>
+                    <option value="UEM">UEM - Univ. Eduardo Mondlane</option>
+                    <option value="UP">UP - Univ. Pedagógica</option>
+                    <option value="ISCTEM">ISCTEM</option>
+                    <option value="USTM">USTM</option>
+                    <option value="UCM">UCM - Univ. Católica</option>
                   </SelectInput>
                 </div>
                 <div>
                   <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">Curso</label>
                   <Input
                     type="text"
-                    name="curso"
-                    value={formData.curso}
+                    name="course"
+                    value={formData.course}
                     onChange={handleInputChange}
                     placeholder="Engenharia Informática"
                     required
@@ -291,13 +294,12 @@ export default function RegisterPage() {
                 </div>
                 <div>
                   <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">Ano de Frequência</label>
-                  <SelectInput name="ano" value={formData.ano} onChange={handleInputChange}>
-                    <option>1º Ano</option>
-                    <option>2º Ano</option>
-                    <option>3º Ano</option>
-                    <option>4º Ano</option>
-                    <option>5º Ano</option>
-                    <option>Finalista</option>
+                  <SelectInput name="year_of_study" value={String(formData.year_of_study)} onChange={handleInputChange}>
+                    <option value="1">1º Ano</option>
+                    <option value="2">2º Ano</option>
+                    <option value="3">3º Ano</option>
+                    <option value="4">4º Ano</option>
+                    <option value="5">5º Ano / Finalista</option>
                   </SelectInput>
                 </div>
               </div>
@@ -308,10 +310,17 @@ export default function RegisterPage() {
           {currentStep === 4 && (
             <div className="space-y-4">
               <h3 className="font-playfair text-xl text-on-surface mb-4 font-bold">Resumo do Registo</h3>
+              
+              {error && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded font-medium">
+                  {error}
+                </div>
+              )}
+
               <div className="space-y-2 bg-[#1b1019]/40 p-4 rounded-lg border border-primary/10 text-xs">
                 <div className="flex justify-between border-b border-white/5 pb-2">
                   <span className="text-on-surface-variant font-bold uppercase">Estudante</span>
-                  <span className="font-bold text-on-surface">{formData.nome || "Não preenchido"}</span>
+                  <span className="font-bold text-on-surface">{formData.full_name || "Não preenchido"}</span>
                 </div>
                 <div className="flex justify-between border-b border-white/5 py-2">
                   <span className="text-on-surface-variant font-bold uppercase">Email</span>
@@ -319,11 +328,11 @@ export default function RegisterPage() {
                 </div>
                 <div className="flex justify-between border-b border-white/5 py-2">
                   <span className="text-on-surface-variant font-bold uppercase">Instituição</span>
-                  <span className="font-bold text-on-surface">{formData.universidade}</span>
+                  <span className="font-bold text-on-surface">{formData.university}</span>
                 </div>
                 <div className="flex justify-between py-2">
                   <span className="text-on-surface-variant font-bold uppercase">Curso</span>
-                  <span className="font-bold text-on-surface">{formData.curso || "Não preenchido"} ({formData.ano})</span>
+                  <span className="font-bold text-on-surface">{formData.course || "Não preenchido"} ({formData.year_of_study < 5 ? `${formData.year_of_study}º Ano` : "5º Ano / Finalista"})</span>
                 </div>
               </div>
               <div className="mt-4 flex items-start gap-3">
@@ -341,16 +350,13 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {error && (
-            <p className="text-xs text-red-500 font-semibold">{error}</p>
-          )}
-
           {/* Navigation Buttons */}
-          <div className="flex gap-4 pt-4">
+          <div className="flex gap-4 pt-4 relative z-10">
             <Button
               type="button"
               variant="outline"
               onClick={prevStep}
+              disabled={loading}
               className={`flex-1 py-3 font-bold uppercase tracking-wider ${currentStep === 1 ? "invisible" : ""}`}
             >
               Voltar
@@ -359,17 +365,17 @@ export default function RegisterPage() {
               type="button"
               variant="primary"
               onClick={nextStep}
-              isLoading={loading}
-              disabled={currentStep === totalSteps && !formData.termsAccepted}
-              className="flex-[2] py-3 font-bold uppercase tracking-wider"
+              disabled={(currentStep === totalSteps && !formData.termsAccepted) || loading}
+              className="flex-[2] py-3 font-bold uppercase tracking-wider flex items-center justify-center gap-2"
             >
-              {currentStep === totalSteps ? "Confirmar Registo" : "Próximo Passo"}
+              {loading && <span className="material-symbols-outlined animate-spin text-sm">sync</span>}
+              {currentStep === totalSteps ? (loading ? "Criando Conta..." : "Confirmar Registo") : "Próximo Passo"}
             </Button>
           </div>
         </form>
 
         {/* Help link */}
-        <div className="mt-6 text-center border-t border-white/5 pt-4">
+        <div className="mt-6 text-center border-t border-white/5 pt-4 relative z-10">
           <p className="text-xs text-on-surface-variant">
             Já tem uma conta?{" "}
             <Link href="/login" className="text-primary hover:underline font-bold">

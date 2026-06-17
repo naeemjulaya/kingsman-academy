@@ -2,21 +2,30 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 export function createClient() {
-  const cookieStore = cookies();
-  
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
+        async get(name: string) {
+          const cookieStore = await cookies();
           return cookieStore.get(name)?.value;
         },
-        set(name: string, value: string, options: any) {
-          cookieStore.set({ name, value, ...options });
+        async set(name: string, value: string, options: any) {
+          try {
+            const cookieStore = await cookies();
+            cookieStore.set({ name, value, ...options });
+          } catch (error) {
+            // The Next.js router might complain if cookies are modified during Server Component rendering.
+          }
         },
-        remove(name: string, options: any) {
-          cookieStore.set({ name, value: "", ...options });
+        async remove(name: string, options: any) {
+          try {
+            const cookieStore = await cookies();
+            cookieStore.set({ name, value: "", ...options });
+          } catch (error) {
+            // The Next.js router might complain if cookies are modified during Server Component rendering.
+          }
         },
       },
     }

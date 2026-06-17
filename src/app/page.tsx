@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { mockCourses, mockTutors } from "@/lib/mockData";
+import { mockCourses, mockTutors, mockCourseTutors } from "@/lib/mockData";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -129,14 +129,15 @@ export default function LandingPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {mockCourses.slice(0, 6).map((course) => {
-                const tutor = mockTutors.find((t) => t.id === course.tutorId) || mockTutors[0];
+                const courseTutor = mockCourseTutors.find((ct) => ct.course_id === course.id);
+                const tutor = courseTutor ? mockTutors.find((t) => t.user_id === courseTutor.tutor_id) || mockTutors[0] : mockTutors[0];
                 return (
                   <div key={course.id} className="glass-panel p-6 rounded-xl group hover:border-primary/40 transition-all duration-300">
                     <div className="flex justify-between items-start mb-6">
                       <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-1 rounded uppercase">
                         {course.department}
                       </span>
-                      <span className="text-on-surface-variant font-bold text-sm">{course.price} MT/mês</span>
+                      <span className="text-on-surface-variant font-bold text-sm">{course.price_monthly} MT/mês</span>
                     </div>
                     <h4 className="font-playfair text-xl text-on-surface font-bold mb-2 group-hover:text-primary transition-colors">
                       {course.name}
@@ -146,9 +147,9 @@ export default function LandingPage() {
                     </p>
                     <div className="flex items-center gap-3 border-t border-white/5 pt-4">
                       <div className="w-9 h-9 rounded-full bg-surface-variant overflow-hidden border border-primary/20">
-                        <img className="w-full h-full object-cover" src={tutor.avatar} alt={tutor.name} />
+                        <img className="w-full h-full object-cover" src={tutor.avatar_url || ""} alt={tutor.full_name} />
                       </div>
-                      <span className="text-sm font-semibold text-on-surface">{tutor.name}</span>
+                      <span className="text-sm font-semibold text-on-surface">{tutor.full_name}</span>
                     </div>
                   </div>
                 );
@@ -169,58 +170,57 @@ export default function LandingPage() {
                 <div className="w-full h-48 rounded-lg overflow-hidden mb-6 border border-primary/10">
                   <img 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                    src={mockTutors[0].avatar} 
-                    alt={mockTutors[0].name} 
+                    src={mockTutors[0].avatar_url || ""} 
+                    alt={mockTutors[0].full_name} 
                   />
                 </div>
-                <h3 className="font-playfair text-2xl text-on-surface font-bold">{mockTutors[0].name}</h3>
+                <h3 className="font-playfair text-2xl text-on-surface font-bold">{mockTutors[0].full_name}</h3>
                 <p className="text-primary text-xs font-bold uppercase tracking-widest mb-3 mt-1">
-                  {mockTutors[0].specialty}
+                  Explicador de Excelência
                 </p>
                 <p className="text-on-surface-variant text-sm leading-relaxed mb-6">
-                  {mockTutors[0].bio}
+                  {mockTutors[0].university}
                 </p>
               </div>
               <div className="flex justify-between border-t border-white/5 pt-4 text-xs text-on-surface-variant/80 font-semibold">
-                <span>⭐ {mockTutors[0].rating} Classificação</span>
-                <span>👤 {mockTutors[0].studentsCount} Alunos</span>
+                <span>⭐ 4.9 Classificação</span>
+                <span>👤 124 Alunos</span>
               </div>
             </div>
 
             {/* Next 3 grid items */}
             {mockTutors.slice(1, 4).map((tutor) => (
-              <div key={tutor.id} className="glass-panel p-6 rounded-xl text-center flex flex-col items-center justify-between group hover:scale-[1.02] transition-all">
+              <div key={tutor.user_id} className="glass-panel p-6 rounded-xl text-center flex flex-col items-center justify-between group hover:scale-[1.02] transition-all">
                 <div className="flex flex-col items-center">
                   <div className="w-20 h-20 rounded-full border-2 border-primary/40 p-1 mb-4 group-hover:border-primary transition-colors">
-                    <img className="w-full h-full object-cover rounded-full" src={tutor.avatar} alt={tutor.name} />
+                    <img className="w-full h-full object-cover rounded-full" src={tutor.avatar_url || ""} alt={tutor.full_name} />
                   </div>
-                  <h4 className="font-playfair text-lg text-on-surface font-bold">{tutor.name}</h4>
+                  <h4 className="font-playfair text-lg text-on-surface font-bold">{tutor.full_name}</h4>
                   <span className="text-primary/70 text-[10px] font-bold uppercase tracking-wider mt-1">
-                    {tutor.specialty.split(" & ")[0]}
+                    Explicador
                   </span>
                 </div>
                 <div className="w-full border-t border-white/5 pt-3 mt-6 text-[11px] text-on-surface-variant/70">
-                  ⭐ {tutor.rating} ({tutor.reviewsCount} avaliações)
+                  ⭐ 4.8 (100+ avaliações)
                 </div>
               </div>
             ))}
 
-            {/* Virgínia Tembe Feature */}
             <div className="md:col-span-5 glass-panel p-6 rounded-xl flex flex-col md:flex-row items-center gap-8">
               <div className="w-full md:w-1/3 h-48 rounded-lg overflow-hidden border border-primary/10">
-                <img className="w-full h-full object-cover" src={mockTutors[4].avatar} alt={mockTutors[4].name} />
+                <img className="w-full h-full object-cover" src={mockTutors[4].avatar_url || ""} alt={mockTutors[4].full_name} />
               </div>
               <div className="flex-1">
-                <h3 className="font-playfair text-2xl text-on-surface font-bold">{mockTutors[4].name}</h3>
+                <h3 className="font-playfair text-2xl text-on-surface font-bold">{mockTutors[4].full_name}</h3>
                 <p className="text-primary text-xs font-bold uppercase tracking-widest mb-3 mt-1">
-                  {mockTutors[4].specialty}
+                  Especialista
                 </p>
                 <p className="text-on-surface-variant text-sm leading-relaxed">
-                  {mockTutors[4].bio}
+                  {mockTutors[4].university}
                 </p>
                 <div className="flex gap-6 mt-4 text-xs font-semibold text-[#808080]">
-                  <span>⭐ {mockTutors[4].rating} Classificação</span>
-                  <span>📚 {mockTutors[4].lessonsCount} Aulas Publicadas</span>
+                  <span>⭐ 4.9 Classificação</span>
+                  <span>📚 50+ Aulas Publicadas</span>
                 </div>
               </div>
             </div>

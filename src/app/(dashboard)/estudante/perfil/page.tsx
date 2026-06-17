@@ -135,12 +135,12 @@ export default function ProfilePage() {
                 <div key={n.id} className="p-4 rounded-lg bg-[#1b1019]/40 border border-primary/5 flex items-center justify-between">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${n.unread ? "bg-primary" : "bg-[#808080]"}`}></span>
+                      <span className={`w-2 h-2 rounded-full ${!n.is_read ? "bg-primary" : "bg-[#808080]"}`}></span>
                       <span className="text-sm font-bold text-on-surface">{n.title}</span>
                     </div>
-                    <p className="text-xs text-on-surface-variant/95 pl-4 leading-relaxed">{n.message}</p>
+                    <p className="text-xs text-on-surface-variant/95 pl-4 leading-relaxed">{n.content}</p>
                   </div>
-                  <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">{n.date}</span>
+                  <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">{n.created_at}</span>
                 </div>
               ))}
             </div>
