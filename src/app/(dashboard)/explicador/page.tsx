@@ -1,25 +1,108 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from "@/components/ui/table";
-import { mockCourses, mockTutors, mockCourseTutors } from "@/lib/mockData";
-
 import { RouteGuard } from "@/components/auth/route-guard";
 
 export default function TutorDashboard() {
-  // Using Keven Gulele as the default tutor (id: t1)
-  const tutor = mockTutors[0];
-  const tutorCourses = mockCourseTutors.filter(ct => ct.tutor_id === tutor.user_id).map(ct => ct.course_id);
-  const courses = mockCourses.filter((c) => tutorCourses.includes(c.id));
+  const { user } = useAuth();
+  const supabase = createClient();
+  
+  const [courses, setCourses] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    lessonsGiven: 0,
+    completionRate: 0
+  });
+  const [loading, setLoading] = useState(true);
 
-  const mockRecentStudents = [
-    { id: "s1", name: "Artur Langa", course: "Bioestatística", progress: "60%", lastActive: "Há 10 min", grade: "16.4 Valor" },
-    { id: "s2", name: "Sara Mondlane", course: "Bioestatística", progress: "90%", lastActive: "Há 1 hora", grade: "18.5 Valor" },
-    { id: "s3", name: "Dércio Tembe", course: "Física II", progress: "15%", lastActive: "Há 1 dia", grade: "11.2 Valor" },
-    { id: "s4", name: "Milena Sitoe", course: "Física II", progress: "45%", lastActive: "Há 2 dias", grade: "14.0 Valor" },
-  ];
+  useEffect(() => {
+    if (user) {
+      fetchTutorData();
+    }
+  }, [user]);
+
+  const fetchTutorData = async () => {
+    setLoading(true);
+    try {
+      if (!user) return;
+
+      // Minhas Cadeiras
+      const { data: ctData } = await supabase
+        .from('course_tutors')
+        .select(`
+          course_id,
+          courses (id, name, department, price_monthly)
+        `)
+        .eq('tutor_id', user.id);
+
+      const tutorCourses = (ctData || []).map(ct => {
+        const c = Array.isArray(ct.courses) ? ct.courses[0] : ct.courses;
+        return c;
+      }).filter(c => c);
+
+      setCourses(tutorCourses);
+
+      const courseIds = tutorCourses.map(c => c.id);
+
+      if (courseIds.length > 0) {
+        // Total Estudantes nestas cadeiras
+        const { count: studentCount } = await supabase
+          .from('enrollments')
+          .select('id', { count: 'exact', head: true })
+          .in('course_id', courseIds)
+          .eq('status', 'ACTIVE');
+          
+        setStats(prev => ({ ...prev, totalStudents: studentCount || 0 }));
+
+        // Aulas ministradas
+        const { count: lessonsCount } = await supabase
+          .from('lessons')
+          .select('id', { count: 'exact', head: true })
+          .in('course_id', courseIds);
+
+        setStats(prev => ({ ...prev, lessonsGiven: lessonsCount || 0, completionRate: 85 }));
+
+        // Estudantes Recentes
+        const { data: recentEnrollments } = await supabase
+          .from('enrollments')
+          .select(`
+            student_id, course_id, created_at,
+            student:student_id(full_name),
+            course:course_id(name)
+          `)
+          .in('course_id', courseIds)
+          .eq('status', 'ACTIVE')
+          .order('created_at', { ascending: false })
+          .limit(4);
+
+        if (recentEnrollments) {
+          const formattedStudents = recentEnrollments.map((enr: any, idx) => {
+            const studentObj = Array.isArray(enr.student) ? enr.student[0] : enr.student;
+            const courseObj = Array.isArray(enr.course) ? enr.course[0] : enr.course;
+            return {
+              id: `s${idx}`,
+              name: studentObj?.full_name || "Desconhecido",
+              course: courseObj?.name || "Desconhecida",
+              progress: "Em progresso",
+              grade: "N/A",
+              lastActive: new Date(enr.created_at).toLocaleDateString('pt-PT')
+            };
+          });
+          setStudents(formattedStudents);
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao carregar dados do explicador:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <RouteGuard allowedRoles={["EXPLICADOR", "ADMIN"]}>
@@ -27,26 +110,26 @@ export default function TutorDashboard() {
       {/* Overview Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="p-6 border-l-4 border-primary">
-          <p className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Ganhos Semestrais</p>
+          <p className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Ganhos Semestrais (Simulado)</p>
           <h3 className="font-playfair text-2xl md:text-3xl text-primary font-bold mt-1">45.750 MT</h3>
           <p className="text-[10px] text-[#808080] font-semibold mt-1">⭐ +12% em relação ao mês anterior</p>
         </Card>
 
         <Card className="p-6">
           <p className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Total Estudantes</p>
-          <h3 className="font-playfair text-2xl md:text-3xl text-primary font-bold mt-1">124</h3>
-          <p className="text-[10px] text-[#808080] font-semibold mt-1">👥 24 novos este mês</p>
+          <h3 className="font-playfair text-2xl md:text-3xl text-primary font-bold mt-1">{stats.totalStudents}</h3>
+          <p className="text-[10px] text-[#808080] font-semibold mt-1">👥 Estudantes activos</p>
         </Card>
 
         <Card className="p-6">
           <p className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Aulas Ministradas</p>
-          <h3 className="font-playfair text-2xl md:text-3xl text-primary font-bold mt-1">36</h3>
-          <p className="text-[10px] text-[#808080] font-semibold mt-1">🎥 8 transmissões agendadas</p>
+          <h3 className="font-playfair text-2xl md:text-3xl text-primary font-bold mt-1">{stats.lessonsGiven}</h3>
+          <p className="text-[10px] text-[#808080] font-semibold mt-1">🎥 Aulas nas suas cadeiras</p>
         </Card>
 
         <Card className="p-6">
           <p className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Taxa de Conclusão</p>
-          <h3 className="font-playfair text-2xl md:text-3xl text-primary font-bold mt-1">94%</h3>
+          <h3 className="font-playfair text-2xl md:text-3xl text-primary font-bold mt-1">{stats.completionRate}%</h3>
           <p className="text-[10px] text-[#808080] font-semibold mt-1">📈 Desempenho acadêmico de elite</p>
         </Card>
       </div>
@@ -86,35 +169,38 @@ export default function TutorDashboard() {
           <div>
             <h3 className="font-playfair text-xl font-bold mb-4">Estudantes Recentes</h3>
             <Card className="p-0 overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Estudante</TableHead>
-                    <TableHead>Cadeira</TableHead>
-                    <TableHead>Progresso</TableHead>
-                    <TableHead>Nota Média</TableHead>
-                    <TableHead>Último Acesso</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {mockRecentStudents.map((stud) => (
-                    <TableRow key={stud.id}>
-                      <TableCell className="font-bold text-on-surface">{stud.name}</TableCell>
-                      <TableCell>{stud.course}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="h-1.5 w-16 bg-surface-container-high rounded-full overflow-hidden shrink-0">
-                            <div className="h-full bg-primary" style={{ width: stud.progress }}></div>
-                          </div>
-                          <span className="text-xs font-bold text-primary">{stud.progress}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-semibold text-emerald-400">{stud.grade}</TableCell>
-                      <TableCell>{stud.lastActive}</TableCell>
+              {loading ? (
+                <p className="p-6 text-sm text-center text-on-surface-variant">Carregando estudantes...</p>
+              ) : students.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Estudante</TableHead>
+                      <TableHead>Cadeira</TableHead>
+                      <TableHead>Progresso</TableHead>
+                      <TableHead>Nota Média</TableHead>
+                      <TableHead>Data Inscrição</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {students.map((stud) => (
+                      <TableRow key={stud.id}>
+                        <TableCell className="font-bold text-on-surface">{stud.name}</TableCell>
+                        <TableCell>{stud.course}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-primary">{stud.progress}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-semibold text-emerald-400">{stud.grade}</TableCell>
+                        <TableCell>{stud.lastActive}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <p className="p-6 text-sm text-center text-on-surface-variant">Não há estudantes inscritos nas suas cadeiras.</p>
+              )}
             </Card>
           </div>
         </div>
@@ -123,26 +209,32 @@ export default function TutorDashboard() {
         <div className="lg:col-span-4 space-y-6">
           <h3 className="font-playfair text-xl font-bold">Minhas Cadeiras</h3>
           <div className="space-y-4">
-            {courses.map((course) => (
-              <Card key={course.id} className="p-5 flex flex-col justify-between gap-4">
-                <div>
-                  <div className="flex justify-between items-start">
-                    <Badge variant="primary">{course.department}</Badge>
-                    <span className="text-[10px] text-[#808080] font-bold uppercase tracking-wider">REF: {course.id}</span>
+            {loading ? (
+              <p className="text-sm text-on-surface-variant">Carregando...</p>
+            ) : courses.length > 0 ? (
+              courses.map((course) => (
+                <Card key={course.id} className="p-5 flex flex-col justify-between gap-4">
+                  <div>
+                    <div className="flex justify-between items-start">
+                      <Badge variant="primary">{course.department}</Badge>
+                      <span className="text-[10px] text-[#808080] font-bold uppercase tracking-wider">REF: {course.id.substring(0, 8)}</span>
+                    </div>
+                    <h4 className="font-playfair text-lg text-on-surface font-bold mt-3">{course.name}</h4>
+                    <p className="text-xs text-on-surface-variant mt-1">Preço: {course.price_monthly} MT/mês</p>
                   </div>
-                  <h4 className="font-playfair text-lg text-on-surface font-bold mt-3">{course.name}</h4>
-                  <p className="text-xs text-on-surface-variant mt-1">Preço: {course.price_monthly} MT/mês</p>
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <button className="flex-1 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-xs text-on-surface font-bold border border-border/10 transition-colors cursor-pointer">
-                    Ver Aulas
-                  </button>
-                  <button className="flex-1 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-xs text-primary font-bold border border-primary/25 transition-colors cursor-pointer">
-                    Materiais
-                  </button>
-                </div>
-              </Card>
-            ))}
+                  <div className="flex gap-2 pt-2">
+                    <button className="flex-1 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-xs text-on-surface font-bold border border-border/10 transition-colors cursor-pointer">
+                      Ver Aulas
+                    </button>
+                    <button className="flex-1 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-xs text-primary font-bold border border-primary/25 transition-colors cursor-pointer">
+                      Materiais
+                    </button>
+                  </div>
+                </Card>
+              ))
+            ) : (
+              <p className="text-sm text-on-surface-variant">Não tens cadeiras atribuídas.</p>
+            )}
           </div>
         </div>
       </div>

@@ -1,21 +1,101 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from "@/components/ui/table";
-import { mockPayments, mockCourses, mockTutors, mockUsers } from "@/lib/mockData";
-
 import { RouteGuard } from "@/components/auth/route-guard";
 
 export default function AdminDashboard() {
-  // Pending payments from mock data
-  const [payments, setPayments] = useState(mockPayments.filter((p) => p.status === "PENDING"));
+  const supabase = createClient();
+  const [payments, setPayments] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    studentsCount: 0,
+    tutorsCount: 0,
+    activeCourses: 0,
+    monthlyRevenue: 0
+  });
+  const [loading, setLoading] = useState(true);
 
-  const handleAction = (id: string, newStatus: "CONFIRMED" | "REJECTED") => {
-    setPayments((prev) => prev.filter((p) => p.id !== id));
-    alert(`Pagamento ${id} foi ${newStatus === "CONFIRMED" ? "confirmado" : "rejeitado"} com sucesso!`);
+  useEffect(() => {
+    fetchAdminData();
+  }, []);
+
+  const fetchAdminData = async () => {
+    setLoading(true);
+    try {
+      // Fetch Pending Payments
+      const { data: pendingPayments } = await supabase
+        .from('payments')
+        .select(`
+          id, amount, method, created_at, status,
+          student:student_id(full_name),
+          course:course_id(name)
+        `)
+        .eq('status', 'PENDING')
+        .order('created_at', { ascending: false });
+        
+      setPayments(pendingPayments || []);
+
+      // Fetch Stats
+      const { count: studentsCount } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'ESTUDANTE');
+        
+      const { count: tutorsCount } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'EXPLICADOR');
+        
+      const { count: activeCourses } = await supabase
+        .from('courses')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_active', true);
+        
+      const { data: confirmedPayments } = await supabase
+        .from('payments')
+        .select('amount')
+        .eq('status', 'CONFIRMED');
+        
+      const revenue = (confirmedPayments || []).reduce((acc, curr) => acc + (curr.amount || 0), 0);
+
+      setStats({
+        studentsCount: studentsCount || 0,
+        tutorsCount: tutorsCount || 0,
+        activeCourses: activeCourses || 0,
+        monthlyRevenue: revenue
+      });
+      
+    } catch (error) {
+      console.error("Erro ao carregar dados de admin:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAction = async (id: string, newStatus: "CONFIRMED" | "REJECTED") => {
+    try {
+      // Fetch the authenticated user inside action since we need admin id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data, error } = await supabase.rpc('confirm_payment', {
+        p_payment_id: id,
+        p_admin_id: user.id,
+        p_status: newStatus
+      });
+
+      if (error || !data?.success) {
+        throw new Error(error?.message || data?.error || 'Erro desconhecido');
+      }
+
+      setPayments((prev) => prev.filter((p) => p.id !== id));
+      alert(`Pagamento foi ${newStatus === "CONFIRMED" ? "confirmado" : "rejeitado"} com sucesso!`);
+    } catch (error: any) {
+      alert("Erro ao atualizar pagamento: " + error.message);
+    }
   };
 
   return (
@@ -24,27 +104,27 @@ export default function AdminDashboard() {
       {/* KPI Cards (5) */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card className="p-4 border-l-4 border-primary">
-          <p className="text-[9px] text-[#808080] uppercase tracking-wider font-bold">Receita Mensal</p>
-          <h3 className="font-playfair text-xl md:text-2xl text-primary font-bold mt-1">55.250 MT</h3>
+          <p className="text-[9px] text-[#808080] uppercase tracking-wider font-bold">Receita Total</p>
+          <h3 className="font-playfair text-xl md:text-2xl text-primary font-bold mt-1">{stats.monthlyRevenue.toLocaleString('pt-MZ')} MT</h3>
         </Card>
 
         <Card className="p-4">
           <p className="text-[9px] text-[#808080] uppercase tracking-wider font-bold">Total Estudantes</p>
-          <h3 className="font-playfair text-xl md:text-2xl text-on-surface font-bold mt-1">74 Alunos</h3>
+          <h3 className="font-playfair text-xl md:text-2xl text-on-surface font-bold mt-1">{stats.studentsCount} Alunos</h3>
         </Card>
 
         <Card className="p-4">
           <p className="text-[9px] text-[#808080] uppercase tracking-wider font-bold">Total Explicadores</p>
-          <h3 className="font-playfair text-xl md:text-2xl text-on-surface font-bold mt-1">12 Tutores</h3>
+          <h3 className="font-playfair text-xl md:text-2xl text-on-surface font-bold mt-1">{stats.tutorsCount} Tutores</h3>
         </Card>
 
         <Card className="p-4">
           <p className="text-[9px] text-[#808080] uppercase tracking-wider font-bold">Cadeiras Ativas</p>
-          <h3 className="font-playfair text-xl md:text-2xl text-on-surface font-bold mt-1">15 Cadeiras</h3>
+          <h3 className="font-playfair text-xl md:text-2xl text-on-surface font-bold mt-1">{stats.activeCourses} Cadeiras</h3>
         </Card>
 
         <Card className="p-4">
-          <p className="text-[9px] text-[#808080] uppercase tracking-wider font-bold">Conversão (Landing)</p>
+          <p className="text-[9px] text-[#808080] uppercase tracking-wider font-bold">Conversão (Simulada)</p>
           <h3 className="font-playfair text-xl md:text-2xl text-emerald-400 font-bold mt-1">68.2%</h3>
         </Card>
       </div>
@@ -118,7 +198,9 @@ export default function AdminDashboard() {
           </div>
 
           <Card className="p-0 overflow-hidden">
-            {payments.length > 0 ? (
+            {loading ? (
+              <div className="p-8 text-center text-on-surface-variant">Carregando pagamentos...</div>
+            ) : payments.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -132,9 +214,8 @@ export default function AdminDashboard() {
                 </TableHeader>
                 <TableBody>
                   {payments.map((p) => {
-                    const student = mockUsers.find(u => u.user_id === p.student_id);
-                    const studentName = student ? student.full_name : p.student_id;
-                    const courseName = mockCourses.find(c => c.id === p.course_id)?.name || p.course_id;
+                    const studentName = p.student?.full_name || "Desconhecido";
+                    const courseName = p.course?.name || "Desconhecida";
 
                     return (
                     <TableRow key={p.id}>
@@ -142,7 +223,7 @@ export default function AdminDashboard() {
                       <TableCell>{courseName}</TableCell>
                       <TableCell className="font-semibold text-primary">{p.amount} MT</TableCell>
                       <TableCell>{p.method}</TableCell>
-                      <TableCell>{p.created_at || "Hoje"}</TableCell>
+                      <TableCell>{new Date(p.created_at).toLocaleDateString("pt-PT")}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <button
@@ -175,14 +256,12 @@ export default function AdminDashboard() {
 
         {/* Recent Activity Timeline */}
         <div className="lg:col-span-4 space-y-4">
-          <h3 className="font-playfair text-lg md:text-xl font-bold">Actividade Recente</h3>
+          <h3 className="font-playfair text-lg md:text-xl font-bold">Actividade do Sistema</h3>
           <Card className="p-4">
             <div className="relative border-l border-primary/10 pl-4 space-y-4 text-xs font-medium">
               {[
-                { message: "Utilizador João Pedro registou-se no sistema", date: "Há 10 min" },
-                { message: "Pagamento confirmado de Keven Gulele (Bioestatística)", date: "Há 1 hora" },
-                { message: "Explicador Nilzam Bakali carregou a Aula 5 de Química", date: "Há 4 horas" },
-                { message: "Nova cadeira de Fisiologia Vegetal criada", date: "Ontem" },
+                { message: "Sistema atualizado para dados reais", date: "Hoje" },
+                { message: "Dashboard de Admin ligado à base de dados", date: "Hoje" },
               ].map((act, idx) => (
                 <div key={idx} className="relative">
                   <div className="absolute -left-[21px] top-0.5 w-2.5 h-2.5 rounded-full bg-[#0A0A0A] border-2 border-primary"></div>

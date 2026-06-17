@@ -1,34 +1,105 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { mockCourses, mockTutors, mockCourseTutors } from "@/lib/mockData";
+import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SelectInput } from "@/components/ui/select_input";
 import { Badge } from "@/components/ui/badge";
 
+interface CourseWithTutor {
+  id: string;
+  name: string;
+  department: string;
+  description: string;
+  price_monthly: number;
+  tutorName: string;
+  tutorAvatar: string;
+}
+
 export default function CourseCatalogue() {
+  const supabase = createClient();
+  
+  const [loading, setLoading] = useState(true);
+  const [courses, setCourses] = useState<CourseWithTutor[]>([]);
+  
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("all");
   const [level, setLevel] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
+  useEffect(() => {
+    fetchCourses();
+  }, []);
+
+  const fetchCourses = async () => {
+    setLoading(true);
+    try {
+      // Fetch all active courses
+      const { data: coursesData } = await supabase
+        .from('courses')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+        
+      if (!coursesData) return;
+
+      // Fetch all active course_tutors
+      const { data: ctData } = await supabase
+        .from('course_tutors')
+        .select('course_id, tutor_id')
+        .eq('is_active', true);
+
+      // Fetch profiles for those tutors
+      let profilesData: any[] = [];
+      if (ctData && ctData.length > 0) {
+        const tutorIds = ctData.map(ct => ct.tutor_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url')
+          .in('id', tutorIds);
+        profilesData = profiles || [];
+      }
+
+      // Map everything
+      const mappedCourses = coursesData.map(c => {
+        const ct = ctData?.find(x => x.course_id === c.id);
+        const tutor = ct ? profilesData.find(p => p.id === ct.tutor_id) : null;
+        
+        return {
+          id: c.id,
+          name: c.name,
+          department: c.department || "Geral",
+          description: c.description || "Sem descrição disponível.",
+          price_monthly: c.price_monthly || 750,
+          tutorName: tutor?.full_name || "Não Atribuído",
+          tutorAvatar: tutor?.avatar_url || "",
+        };
+      });
+
+      setCourses(mappedCourses);
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filtered courses
   const filteredCourses = useMemo(() => {
-    return mockCourses.filter((course) => {
+    return courses.filter((course) => {
       const matchesSearch = course.name.toLowerCase().includes(search.toLowerCase()) ||
         course.description?.toLowerCase().includes(search.toLowerCase());
 
       const matchesDepartment = department === "all" || course.department === department;
-      // Level doesn't exist in DB schema anymore, we will ignore it or you can change it to search another field.
-      // For now we'll just allow all.
+      // Level is ignored for now since DB doesn't have it directly.
       const matchesLevel = level === "all";
 
       return matchesSearch && matchesDepartment && matchesLevel;
     });
-  }, [search, department, level]);
+  }, [courses, search, department, level]);
 
   // Paginated courses
   const paginatedCourses = useMemo(() => {
@@ -43,6 +114,14 @@ export default function CourseCatalogue() {
       setCurrentPage(page);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 max-w-[1440px] mx-auto">
@@ -85,11 +164,10 @@ export default function CourseCatalogue() {
             className="w-full sm:w-48 font-semibold"
           >
             <option value="all">Todas Faculdades</option>
-            <option value="Ciências Médicas">Ciências Médicas</option>
-            <option value="Engenharia">Engenharia</option>
-            <option value="Biologia">Biologia</option>
-            <option value="Agronomia">Agronomia</option>
-            <option value="Informática">Informática</option>
+            <option value="DCB">DCB</option>
+            <option value="DMI">DMI</option>
+            <option value="Fac. Medicina">Medicina</option>
+            <option value="FENG">Engenharia</option>
           </SelectInput>
 
           <SelectInput
@@ -113,10 +191,6 @@ export default function CourseCatalogue() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {paginatedCourses.length > 0 ? (
           paginatedCourses.map((course) => {
-            const courseTutor = mockCourseTutors.find((ct) => ct.course_id === course.id);
-            const tutor = courseTutor ? mockTutors.find((t) => t.user_id === courseTutor.tutor_id) : null;
-            const tutorName = tutor ? tutor.full_name : "Não Atribuído";
-            const tutorAvatar = tutor ? tutor.avatar_url : "";
             return (
               <Card key={course.id} className="p-6 group hover:border-primary/40 transition-all flex flex-col justify-between h-full">
                 <div>
@@ -139,10 +213,14 @@ export default function CourseCatalogue() {
 
                 <div className="flex items-center justify-between border-t border-white/5 pt-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/20">
-                      <img className="w-full h-full object-cover" src={tutorAvatar || ""} alt={tutorName} />
+                    <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/20 bg-surface-container-low flex items-center justify-center">
+                      {course.tutorAvatar ? (
+                        <img className="w-full h-full object-cover" src={course.tutorAvatar} alt={course.tutorName} />
+                      ) : (
+                        <span className="material-symbols-outlined text-sm text-on-surface-variant">person</span>
+                      )}
                     </div>
-                    <span className="text-xs font-semibold text-on-surface">{tutorName}</span>
+                    <span className="text-xs font-semibold text-on-surface">{course.tutorName}</span>
                   </div>
                   <Link href={`/estudante/cadeiras/${course.id}`}>
                     <button className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer">

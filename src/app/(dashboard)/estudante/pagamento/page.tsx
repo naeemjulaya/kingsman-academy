@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { mockCourses } from "@/lib/mockData";
+import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 type PaymentMethod = "MPESA" | "EMOLA" | "TRANSFERENCIA";
 
@@ -13,14 +13,42 @@ export default function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const courseId = searchParams.get("courseId");
+  const { user } = useAuth();
+  const supabase = createClient();
 
-  const course = mockCourses.find((c) => c.id === courseId) || mockCourses[0];
+  const [course, setCourse] = useState<any>(null);
+  const [loadingInitial, setLoadingInitial] = useState(true);
 
   const [method, setMethod] = useState<PaymentMethod>("MPESA");
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(2); // Step 2: Pagamento is active
+  const [transactionId, setTransactionId] = useState<string>("");
+
+  useEffect(() => {
+    if (courseId) {
+      fetchCourse();
+    } else {
+      router.push("/estudante/cadeiras");
+    }
+  }, [courseId]);
+
+  const fetchCourse = async () => {
+    try {
+      const { data } = await supabase
+        .from('courses')
+        .select('*')
+        .eq('id', courseId)
+        .single();
+      
+      if (data) setCourse(data);
+    } catch (error) {
+      console.error("Error fetching course:", error);
+    } finally {
+      setLoadingInitial(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -38,17 +66,91 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) return;
+    if (!file || !user || !course) return;
 
     setLoading(true);
-    setTimeout(() => {
+    try {
+      // 1. Upload proof to Supabase Storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}_proof.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('payment-proofs')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('payment-proofs')
+        .getPublicUrl(filePath);
+
+      // 2. Insert Payment Record
+      const { data: paymentData, error: paymentError } = await supabase
+        .from('payments')
+        .insert({
+          student_id: user.id,
+          course_id: course.id,
+          amount: course.price_monthly,
+          method: method,
+          status: 'PENDING',
+          proof_url: publicUrl
+        })
+        .select('id')
+        .single();
+
+      if (paymentError) throw paymentError;
+
+      // 3. Upsert Enrollment Record
+      // Supabase RLS policies may prevent direct upsert if user doesn't own it or policy strictly separates insert/update
+      // Let's try inserting first, if it fails because it exists, update it.
+      const { data: existingEnrollment } = await supabase
+        .from('enrollments')
+        .select('id')
+        .eq('student_id', user.id)
+        .eq('course_id', course.id)
+        .maybeSingle();
+
+      if (existingEnrollment) {
+        await supabase
+          .from('enrollments')
+          .update({ payment_status: 'PENDING' })
+          .eq('id', existingEnrollment.id);
+      } else {
+        await supabase
+          .from('enrollments')
+          .insert({
+            student_id: user.id,
+            course_id: course.id,
+            status: 'PENDING',
+            payment_status: 'PENDING'
+          });
+      }
+
+      setTransactionId(paymentData.id.split('-')[0].toUpperCase());
+      setStep(3); // Go to Confirmação
+    } catch (error) {
+      console.error("Error submitting payment:", error);
+      alert("Ocorreu um erro ao submeter o comprovativo. Tente novamente.");
+    } finally {
       setLoading(false);
-      setStep(3); // Go to Step 3: Confirmação
-      alert("Iniciando verificação financeira: Comprovativo enviado com sucesso!");
-    }, 1500);
+    }
   };
+
+  if (loadingInitial) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!course) {
+    return <div className="text-center py-20 text-on-surface-variant font-medium">Cadeira não encontrada.</div>;
+  }
 
   return (
     <div className="space-y-8 max-w-[1200px] mx-auto relative">
@@ -193,7 +295,7 @@ export default function CheckoutPage() {
                   </li>
                   <li className="flex gap-3">
                     <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">2</span>
-                    <p>Selecione <span className="text-amber-200 font-mono">6) Pagamentos</span> e depois <span class="text-amber-200 font-mono">Pagar Facturas</span>.</p>
+                    <p>Selecione <span className="text-amber-200 font-mono">6) Pagamentos</span> e depois <span className="text-amber-200 font-mono">Pagar Facturas</span>.</p>
                   </li>
                   <li className="flex gap-3">
                     <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">3</span>
@@ -335,7 +437,7 @@ export default function CheckoutPage() {
           <div className="p-4 bg-[#1b1019]/40 border border-primary/10 rounded-lg text-xs space-y-1 max-w-md mx-auto font-medium">
             <div className="flex justify-between">
               <span className="text-[#808080]">ID Transacção:</span>
-              <span className="font-mono text-primary font-bold">TX-{Math.floor(100000 + Math.random() * 900000)}</span>
+              <span className="font-mono text-primary font-bold">TX-{transactionId || "Pendente"}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-[#808080]">Valor:</span>
