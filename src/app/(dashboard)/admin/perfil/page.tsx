@@ -1,6 +1,11 @@
 import { Suspense } from "react";
 import ProfilePage from "../../estudante/perfil/page";
-//novo codigo
+
+// Força renderização dinâmica (sem pre-rendering)
+// Isso evita que o Supabase client seja inicializado durante o build
+//Cena para forcar
+export const dynamic = "force-dynamic";
+
 export default function AdminProfilePage() {
     return (
         <Suspense fallback={
