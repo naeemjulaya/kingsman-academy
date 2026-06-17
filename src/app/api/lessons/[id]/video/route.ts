@@ -1,13 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
+// Atualizadoo: Definindo params como uma Promise para satisfazer o Next.js
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = createClient();
-    const lessonId = params.id;
+    const supabase = await createClient(); // Adicionado await caso seu criador de cliente seja assíncrono no servidor
+
+    // Atualizado: Aguardando a Promise dos parâmetros se resolver
+    const { id } = await context.params;
+    const lessonId = id;
 
     // 1. Verifica autenticação
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -41,8 +45,8 @@ export async function GET(
       .eq("course_id", lesson.course_id)
       .single();
 
-    const hasAccess = enrollment && 
-      enrollment.status === "ACTIVE" && 
+    const hasAccess = enrollment &&
+      enrollment.status === "ACTIVE" &&
       enrollment.payment_status === "CONFIRMED" &&
       (!enrollment.end_date || new Date(enrollment.end_date) > new Date());
 
