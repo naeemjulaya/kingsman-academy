@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth, type UserRole } from "@/hooks/use-auth";
 
@@ -10,7 +10,8 @@ interface RouteGuardProps {
   fallback?: React.ReactNode;
 }
 
-export function RouteGuard({ children, allowedRoles, fallback }: RouteGuardProps) {
+// Componente interno que contém a lógica de autenticação- Qwen
+function RouteGuardContent({ children, allowedRoles, fallback }: RouteGuardProps) {
   const { user, loading, hasRole } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -19,7 +20,7 @@ export function RouteGuard({ children, allowedRoles, fallback }: RouteGuardProps
     if (!loading && !user) {
       router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
     }
-    
+
     if (!loading && user && !hasRole(allowedRoles)) {
       // Redireciona para dashboard do seu role
       const dashboards: Record<UserRole, string> = {
@@ -45,4 +46,19 @@ export function RouteGuard({ children, allowedRoles, fallback }: RouteGuardProps
   }
 
   return <>{children}</>;
+}
+
+// Componente exportado com Suspense boundary
+export function RouteGuard({ children, allowedRoles, fallback }: RouteGuardProps) {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center bg-[#0A0A0A]">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#FF48FF] border-t-transparent" />
+      </div>
+    }>
+      <RouteGuardContent allowedRoles={allowedRoles} fallback={fallback}>
+        {children}
+      </RouteGuardContent>
+    </Suspense>
+  );
 }
