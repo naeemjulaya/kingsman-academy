@@ -7,9 +7,9 @@ const PUBLIC_ROUTES = ["/", "/login", "/register", "/reset-password"];
 
 // Mapeamento de roles para rotas permitidas
 const ROLE_ROUTES: Record<string, string[]> = {
-  ESTUDANTE: ["/estudante", "/estudante/perfil", "/estudante/cadeiras", "/estudante/aulas", "/estudante/pagamentos", "/estudante/mensagens"],
+  ESTUDANTE: ["/estudante", "/estudante/perfil", "/estudante/cadeiras", "/estudante/aulas", "/estudante/pagamento", "/estudante/mensagens"],
   EXPLICADOR: ["/explicador", "/explicador/perfil", "/explicador/cadeiras", "/explicador/aulas", "/explicador/estudantes", "/explicador/materiais", "/explicador/ganhos", "/explicador/mensagens"],
-  COORDENADOR: ["/coordenador", "/coordenador/perfil", "/coordenador/cadeiras", "/coordenador/explicadores", "/coordenador/estudantes", "/coordenador/pagamentos", "/coordenador/inscricoes", "/coordenador/mensagens"],
+  COORDENADOR: ["/coordenador", "/coordenador/perfil", "/coordenador/cadeiras", "/coordenador/explicadores", "/coordenador/estudantes", "/coordenador/pagamento", "/coordenador/inscricoes", "/coordenador/mensagens"],
   ADMIN: ["/admin", "/estudante", "/explicador", "/coordenador"],
 };
 
@@ -55,7 +55,7 @@ async function getUserRole(userId: string): Promise<string> {
   try {
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = createClient();
-    
+
     const { data, error } = await supabase
       .from("profiles")
       .select("role")

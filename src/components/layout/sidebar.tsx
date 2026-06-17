@@ -17,7 +17,7 @@ const MENU_ITEMS: Record<string, MenuItem[]> = {
     { title: "Dashboard", href: "/estudante", icon: "dashboard" },
     { title: "Minhas Cadeiras", href: "/estudante/cadeiras", icon: "book" },
     { title: "Aulas", href: "/estudante/aulas", icon: "play_circle" },
-    { title: "Pagamentos", href: "/estudante/pagamentos", icon: "payments" },
+    { title: "Pagamentos", href: "/estudante/pagamento", icon: "payments" },
     { title: "Mensagens", href: "/estudante/mensagens", icon: "chat" },
     { title: "Perfil", href: "/estudante/perfil", icon: "account_circle" },
   ],
