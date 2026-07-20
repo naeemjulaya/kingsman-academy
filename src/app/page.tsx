@@ -1,12 +1,22 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { mockCourses, mockTutors, mockCourseTutors } from "@/lib/mockData";
+import { SocialLinks } from "@/components/social-links";
 
 export default function LandingPage() {
   const router = useRouter();
+  const [platform, setPlatform] = useState({
+    platform_name: "Kingsman Academy",
+    contact_email: "",
+    contact_phone: "",
+  });
+
+  useEffect(() => {
+    fetch("/api/settings").then((response) => response.json()).then((data) => setPlatform((current) => ({ ...current, ...data }))).catch(() => undefined);
+  }, []);
   
   // Testimonial carousel mock state
   const testimonials = [
@@ -37,7 +47,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#150b14]/80 backdrop-blur-md border-b border-primary/10 h-20 shadow-md shadow-primary/5">
         <div className="max-w-[1440px] mx-auto px-6 md:px-12 h-full flex items-center justify-between">
           <Link href="/" className="font-playfair text-[#FF48FF] font-bold text-lg md:text-xl tracking-tight">
-            KINGSMAN ACADEMY
+            {platform.platform_name.toUpperCase()}
           </Link>
           <div className="hidden md:flex items-center gap-10">
             <a href="#cadeiras" className="text-on-surface-variant hover:text-primary transition-colors text-sm font-semibold">Cadeiras</a>
@@ -47,13 +57,13 @@ export default function LandingPage() {
           <div className="flex items-center gap-6">
             <button 
               onClick={() => router.push("/login")}
-              className="text-on-surface hover:text-primary transition-all font-semibold text-sm cursor-pointer"
+              className="text-on-surface hover:text-primary transition-colors duration-200 font-semibold text-sm cursor-pointer"
             >
               Entrar
             </button>
             <button 
               onClick={() => router.push("/register")}
-              className="magenta-gradient px-4 py-2 rounded-lg text-sm text-black font-bold shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              className="magenta-gradient px-4 py-2 rounded-lg text-sm text-black font-bold shadow-lg shadow-primary/20 hover:brightness-110 hover:shadow-primary/30 transition-[filter,box-shadow] duration-200 cursor-pointer"
             >
               Criar Conta
             </button>
@@ -75,7 +85,7 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button 
                 onClick={() => router.push("/register")}
-                className="magenta-gradient px-8 py-3.5 rounded-lg text-sm text-black font-bold shadow-xl shadow-primary/30 hover:scale-105 transition-all cursor-pointer glitch-hover"
+                className="magenta-gradient px-8 py-3.5 rounded-lg text-sm text-black font-bold shadow-xl shadow-primary/30 hover:brightness-110 hover:shadow-primary/40 transition-[filter,box-shadow] duration-200 cursor-pointer"
               >
                 Começar Agora
               </button>
@@ -318,7 +328,7 @@ export default function LandingPage() {
             
             <div className="relative z-10 flex-1">
               <p className="font-playfair text-lg md:text-xl text-on-surface italic mb-6 leading-relaxed">
-                "{testimonials[activeTestimonial].text}"
+                &ldquo;{testimonials[activeTestimonial].text}&rdquo;
               </p>
               <div className="flex justify-between items-end">
                 <div>
@@ -348,14 +358,11 @@ export default function LandingPage() {
       <footer className="bg-[#150b14] border-t border-primary/10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 px-6 md:px-12 py-16 max-w-[1440px] mx-auto">
           <div className="space-y-4 col-span-1">
-            <h2 className="font-playfair text-xl text-primary tracking-tight font-bold">KINGSMAN ACADEMY</h2>
+            <h2 className="font-playfair text-xl text-primary tracking-tight font-bold">{platform.platform_name.toUpperCase()}</h2>
             <p className="text-xs text-on-surface-variant leading-relaxed">
               Elevando o padrão da educação universitária em Moçambique através de tecnologia e expertise.
             </p>
-            <div className="flex gap-4 pt-2">
-              <a href="#" className="text-on-surface-variant hover:text-primary transition-colors"><span className="material-symbols-outlined text-lg">public</span></a>
-              <a href="#" className="text-on-surface-variant hover:text-primary transition-colors"><span className="material-symbols-outlined text-lg">mail</span></a>
-            </div>
+            <SocialLinks />
           </div>
           <div>
             <h4 className="text-xs text-on-surface uppercase tracking-widest font-bold mb-4">Cadeiras</h4>
@@ -375,7 +382,8 @@ export default function LandingPage() {
           <div>
             <h4 className="text-xs text-on-surface uppercase tracking-widest font-bold mb-4">Suporte</h4>
             <ul className="space-y-2 text-xs text-on-surface-variant">
-              <li><a className="hover:text-primary transition-colors" href="#">Contacto</a></li>
+              {platform.contact_email && <li><a className="hover:text-primary transition-colors" href={`mailto:${platform.contact_email}`}>{platform.contact_email}</a></li>}
+              {platform.contact_phone && <li><a className="hover:text-primary transition-colors" href={`tel:${platform.contact_phone}`}>{platform.contact_phone}</a></li>}
               <li><a className="hover:text-primary transition-colors" href="#">Privacidade</a></li>
               <li><a className="hover:text-primary transition-colors" href="#">Termos de Uso</a></li>
             </ul>

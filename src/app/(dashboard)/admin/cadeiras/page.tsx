@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
+import { getErrorMessage } from "@/lib/errors";
 
 interface ExplicadorOption {
   id: string;
@@ -27,8 +28,8 @@ interface Cadeira {
   youtube_playlist_id: string;
   is_active: boolean;
   lessons_count?: number;
-  tutor_name?: string;
-  tutor_id?: string;
+  tutor_names?: string[];
+  tutor_ids?: string[];
 }
 
 export default function CadeirasPage() {
@@ -51,7 +52,7 @@ export default function CadeirasPage() {
     max_tutors: 2,
     youtube_playlist_id: "",
     is_active: true,
-    tutor_id: ""
+    tutor_ids: []
   });
 
   // Modal de Eliminação
@@ -76,7 +77,7 @@ export default function CadeirasPage() {
       const { data: tutorsData, error: tutorsError } = await supabase
         .from("profiles")
         .select("id, full_name")
-        .eq("role", "EXPLICADOR")
+        .in("role", ["EXPLICADOR", "ADMIN"])
         .eq("status", "active");
       if (tutorsError) throw tutorsError;
       setTutors(tutorsData as ExplicadorOption[] || []);
@@ -90,7 +91,7 @@ export default function CadeirasPage() {
             .select("id", { count: "exact", head: true })
             .eq("course_id", c.id);
 
-          // Get active tutor
+          // Get every active tutor assigned to this course.
           const { data: tutorRel } = await supabase
             .from("course_tutors")
             .select(`
@@ -98,17 +99,18 @@ export default function CadeirasPage() {
               profiles:tutor_id(full_name)
             `)
             .eq("course_id", c.id)
-            .eq("is_active", true)
-            .limit(1);
+            .eq("is_active", true);
 
-          const tutorInfo = tutorRel && tutorRel[0];
-          const tName = tutorInfo?.profiles && (tutorInfo.profiles as any).full_name;
+          const activeTutors = (tutorRel || []).map((relation) => {
+            const profile = Array.isArray(relation.profiles) ? relation.profiles[0] : relation.profiles;
+            return { id: relation.tutor_id, name: profile?.full_name || "Explicador sem nome" };
+          });
 
           return {
             ...c,
             lessons_count: lessonsCount || 0,
-            tutor_name: tName || "Sem Explicador",
-            tutor_id: tutorInfo?.tutor_id || ""
+            tutor_names: activeTutors.map((tutor) => tutor.name),
+            tutor_ids: activeTutors.map((tutor) => tutor.id),
           };
         })
       );
@@ -132,7 +134,7 @@ export default function CadeirasPage() {
       max_tutors: 2,
       youtube_playlist_id: "",
       is_active: true,
-      tutor_id: tutors[0]?.id || ""
+      tutor_ids: []
     });
     setIsEdit(false);
     setIsOpen(true);
@@ -147,72 +149,25 @@ export default function CadeirasPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      let courseId = selectedCadeira.id;
-
-      if (isEdit && courseId) {
-        // Update Course
-        const { error: courseError } = await supabase
-          .from("courses")
-          .update({
-            name: selectedCadeira.name,
-            department: selectedCadeira.department,
-            university: selectedCadeira.university,
-            description: selectedCadeira.description,
-            price_monthly: selectedCadeira.price_monthly,
-            price_per_lesson: selectedCadeira.price_per_lesson,
-            max_tutors: selectedCadeira.max_tutors,
-            youtube_playlist_id: selectedCadeira.youtube_playlist_id,
-            is_active: selectedCadeira.is_active
-          })
-          .eq("id", courseId);
-
-        if (courseError) throw courseError;
-      } else {
-        // Insert Course
-        const { data: newCourse, error: courseError } = await supabase
-          .from("courses")
-          .insert({
-            name: selectedCadeira.name,
-            department: selectedCadeira.department,
-            university: selectedCadeira.university || "UEM",
-            description: selectedCadeira.description,
-            price_monthly: selectedCadeira.price_monthly || 750,
-            price_per_lesson: selectedCadeira.price_per_lesson || 150,
-            max_tutors: selectedCadeira.max_tutors || 2,
-            youtube_playlist_id: selectedCadeira.youtube_playlist_id,
-            is_active: selectedCadeira.is_active ?? true
-          })
-          .select()
-          .single();
-
-        if (courseError) throw courseError;
-        courseId = newCourse.id;
-      }
-
-      // Update / Insert course_tutor relationship
-      if (selectedCadeira.tutor_id && courseId) {
-        // Deactivate past relationships
-        await supabase
-          .from("course_tutors")
-          .update({ is_active: false })
-          .eq("course_id", courseId);
-
-        // Insert new active tutor relationship
-        const { error: tutorRelError } = await supabase
-          .from("course_tutors")
-          .insert({
-            course_id: courseId,
-            tutor_id: selectedCadeira.tutor_id,
-            is_active: true
-          });
-
-        if (tutorRelError) throw tutorRelError;
-      }
+      const { error } = await supabase.rpc("admin_save_course_v2", {
+        p_id: isEdit ? selectedCadeira.id : null,
+        p_name: selectedCadeira.name?.trim(),
+        p_department: selectedCadeira.department?.trim() ?? "",
+        p_university: selectedCadeira.university?.trim() || "UEM",
+        p_description: selectedCadeira.description ?? "",
+        p_price_monthly: Number(selectedCadeira.price_monthly ?? 750),
+        p_price_per_lesson: Number(selectedCadeira.price_per_lesson ?? 150),
+        p_max_tutors: Math.max(Number(selectedCadeira.max_tutors ?? 1), selectedCadeira.tutor_ids?.length ?? 0),
+        p_youtube_playlist_id: selectedCadeira.youtube_playlist_id ?? "",
+        p_is_active: selectedCadeira.is_active ?? true,
+        p_tutor_ids: selectedCadeira.tutor_ids ?? [],
+      });
+      if (error) throw error;
 
       setIsOpen(false);
       fetchData();
-    } catch (error: any) {
-      alert("Erro ao gravar dados: " + error.message);
+    } catch (error: unknown) {
+      alert("Erro ao gravar dados: " + getErrorMessage(error));
     }
   };
 
@@ -228,8 +183,8 @@ export default function CadeirasPage() {
       setCourses(prev => prev.filter(c => c.id !== cadeiraToDelete));
       setIsDeleteOpen(false);
       setCadeiraToDelete(null);
-    } catch (error: any) {
-      alert("Erro ao eliminar a cadeira (certifique-se de que não tem inscrições/pagamentos associados): " + error.message);
+    } catch (error: unknown) {
+      alert("Erro ao eliminar a cadeira (certifique-se de que não tem inscrições/pagamentos associados): " + getErrorMessage(error));
     }
   };
 
@@ -295,7 +250,9 @@ export default function CadeirasPage() {
                       </TableCell>
                       <TableCell>{c.department}</TableCell>
                       <TableCell className="font-medium text-primary">{c.lessons_count} aulas</TableCell>
-                      <TableCell className="font-medium text-on-surface">{c.tutor_name}</TableCell>
+                      <TableCell className="font-medium text-on-surface">
+                        {c.tutor_names?.length ? c.tutor_names.join(", ") : "Sem Explicador"}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={c.is_active ? "success" : "danger"}>
                           {c.is_active ? "Ativo" : "Inativo"}
@@ -379,16 +336,29 @@ export default function CadeirasPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Explicador Responsável</label>
-                <Select
-                  value={selectedCadeira.tutor_id}
-                  onChange={(e) => setSelectedCadeira({ ...selectedCadeira, tutor_id: e.target.value })}
-                >
-                  <option value="">Selecione um Explicador</option>
-                  {tutors.map(t => (
-                    <option key={t.id} value={t.id}>{t.full_name}</option>
-                  ))}
-                </Select>
+                <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Explicadores Responsáveis</label>
+                <div className="max-h-44 space-y-2 overflow-y-auto rounded-lg bg-surface-container p-3">
+                  {tutors.length ? tutors.map((tutor) => {
+                    const checked = selectedCadeira.tutor_ids?.includes(tutor.id) ?? false;
+                    return (
+                      <label key={tutor.id} className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 hover:bg-primary/5">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => setSelectedCadeira((current) => ({
+                            ...current,
+                            tutor_ids: checked
+                              ? (current.tutor_ids ?? []).filter((id) => id !== tutor.id)
+                              : [...(current.tutor_ids ?? []), tutor.id],
+                          }))}
+                          className="h-4 w-4 accent-[#FF48FF]"
+                        />
+                        <span className="text-sm text-on-surface">{tutor.full_name}</span>
+                      </label>
+                    );
+                  }) : <p className="text-xs text-on-surface-variant">Nenhum explicador ativo encontrado.</p>}
+                </div>
+                <p className="text-[10px] text-on-surface-variant">Pode selecionar mais de um explicador para a mesma cadeira.</p>
               </div>
 
               <div className="space-y-1.5">

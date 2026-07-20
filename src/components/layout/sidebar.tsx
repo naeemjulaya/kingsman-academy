@@ -27,8 +27,6 @@ const MENU_ITEMS: Record<string, MenuItem[]> = {
     { title: "Aulas", href: "/explicador/aulas", icon: "play_circle" },
     { title: "Estudantes", href: "/explicador/estudantes", icon: "group" },
     { title: "Materiais", href: "/explicador/materiais", icon: "folder" },
-    { title: "Ganhos", href: "/explicador/ganhos", icon: "monetization_on" },
-    { title: "Mensagens", href: "/explicador/mensagens", icon: "chat" },
     { title: "Perfil", href: "/explicador/perfil", icon: "account_circle" },
   ],
   COORDENADOR: [
@@ -68,7 +66,12 @@ export function Sidebar() {
   };
 
   const linkClass = (href: string) => {
-    const isActive = pathname === href || pathname?.startsWith(href + "/");
+    // The role dashboard is the parent of every role route, so it must only
+    // match exactly. Nested navigation items may continue matching by prefix.
+    const isDashboard = href === menuItems[0]?.href;
+    const isActive = isDashboard
+      ? pathname === href
+      : pathname === href || pathname?.startsWith(href + "/");
     return cn(
       "flex items-center gap-3 rounded-lg p-2.5 transition-all text-sm font-semibold select-none cursor-pointer",
       {

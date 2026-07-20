@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SelectInput } from "@/components/ui/select_input";
 import { createClient } from "@/lib/supabase/client";
+import { EmailMagicLinkForm } from "@/components/auth/email-magic-link-form";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -93,18 +94,21 @@ export default function RegisterPage() {
         if (authError) throw authError;
 
         if (authData.user) {
-          // 2. Update the profile row that was created by the trigger
+          // 2. Upsert also covers projects where the auth trigger was not installed yet.
           const { error: profileError } = await supabase
             .from("profiles")
-            .update({
+            .upsert({
+              user_id: authData.user.id,
               full_name: formData.full_name,
+              email: formData.email,
               phone: formData.phone,
               university: formData.university,
               course: formData.course,
               year_of_study: formData.year_of_study,
+              role: "ESTUDANTE",
+              status: "active",
               // avatar_url logic would require storage upload first, skipping for now
-            })
-            .eq("user_id", authData.user.id);
+            }, { onConflict: "user_id" });
 
           if (profileError) throw profileError;
 
@@ -178,6 +182,16 @@ export default function RegisterPage() {
       {/* Multi-step Form Container */}
       <div className="w-full max-w-md glass-panel rounded-xl p-6 shadow-2xl relative overflow-hidden">
         <div className="scanning-line opacity-20"></div>
+
+        <div className="relative z-10 mb-5">
+          <EmailMagicLinkForm onError={setError} />
+          <div className="mt-4 flex items-center gap-3">
+            <hr className="flex-1 border-border/10" />
+            <span className="text-[10px] uppercase tracking-wider text-on-surface-variant/60">ou preencher manualmente</span>
+            <hr className="flex-1 border-border/10" />
+          </div>
+          {error && currentStep !== 4 && <p className="mt-3 text-xs font-semibold text-red-400">{error}</p>}
+        </div>
 
         <form onSubmit={(e) => e.preventDefault()} className="space-y-4 relative z-10">
           {/* Step 1: Conta */}

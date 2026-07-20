@@ -11,18 +11,51 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RouteGuard } from "@/components/auth/route-guard";
 
+type Profile = {
+    id: string;
+    user_id: string;
+    full_name: string;
+    email: string;
+    role: "ESTUDANTE" | "EXPLICADOR" | "COORDENADOR" | "ADMIN";
+    phone: string | null;
+    university: string | null;
+    course: string | null;
+    year_of_study: number | null;
+    avatar_url: string | null;
+};
+
+type EditableProfile = {
+    full_name: string;
+    phone: string;
+    university: string;
+    course: string;
+    year_of_study: string;
+    avatar_url: string;
+};
+
+const emptyEditableProfile: EditableProfile = {
+    full_name: "",
+    phone: "",
+    university: "",
+    course: "",
+    year_of_study: "",
+    avatar_url: "",
+};
+
 export default function ProfilePage() {
     const searchParams = useSearchParams();
     const defaultTab = searchParams.get("tab") || "info";
-    const { user } = useAuth();
+    const { user, reload: reloadAuth } = useAuth();
     const supabase = createClient();
 
     const [activeTab, setActiveTab] = useState(defaultTab);
-    const [currentPassword, setCurrentPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
 
-    const [profile, setProfile] = useState<any>(null);
+    const [profile, setProfile] = useState<Profile | null>(null);
+    const [editableProfile, setEditableProfile] = useState<EditableProfile>(emptyEditableProfile);
+    const [savingProfile, setSavingProfile] = useState(false);
+    const [profileMessage, setProfileMessage] = useState("");
     const [notifications, setNotifications] = useState<any[]>([]);
     const [activity, setActivity] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -43,7 +76,18 @@ export default function ProfilePage() {
                 .eq('user_id', user?.id)
                 .single();
 
-            setProfile(profileData);
+            const loadedProfile = profileData as Profile | null;
+            setProfile(loadedProfile);
+            if (loadedProfile) {
+                setEditableProfile({
+                    full_name: loadedProfile.full_name || "",
+                    phone: loadedProfile.phone || "",
+                    university: loadedProfile.university || "",
+                    course: loadedProfile.course || "",
+                    year_of_study: loadedProfile.year_of_study?.toString() || "",
+                    avatar_url: loadedProfile.avatar_url || "",
+                });
+            }
 
             // Fetch Notifications
             const { data: notifs } = await supabase
@@ -64,10 +108,72 @@ export default function ProfilePage() {
         }
     };
 
+    const updateEditableProfile = (field: keyof EditableProfile, value: string) => {
+        setEditableProfile((current) => ({ ...current, [field]: value }));
+    };
+
+    const handleProfileUpdate = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !profile) return;
+
+        const fullName = editableProfile.full_name.trim();
+        if (fullName.length < 3) {
+            setProfileMessage("Indique um nome com pelo menos 3 caracteres.");
+            return;
+        }
+
+        const year = editableProfile.year_of_study
+            ? Number.parseInt(editableProfile.year_of_study, 10)
+            : null;
+        if (year !== null && (!Number.isInteger(year) || year < 1 || year > 10)) {
+            setProfileMessage("O ano de estudo deve estar entre 1 e 10.");
+            return;
+        }
+
+        setSavingProfile(true);
+        setProfileMessage("");
+        try {
+            const updates = {
+                full_name: fullName,
+                phone: editableProfile.phone.trim() || null,
+                university: editableProfile.university.trim() || null,
+                avatar_url: editableProfile.avatar_url.trim() || null,
+                ...(profile.role === "ESTUDANTE" ? {
+                    course: editableProfile.course.trim() || null,
+                    year_of_study: year,
+                } : {}),
+            };
+            const { data, error } = await supabase
+                .from("profiles")
+                .update(updates)
+                .eq("user_id", user.id)
+                .select("*")
+                .single();
+            if (error) throw error;
+
+            const { error: metadataError } = await supabase.auth.updateUser({
+                data: { full_name: fullName, avatar_url: updates.avatar_url },
+            });
+            if (metadataError) throw metadataError;
+
+            setProfile(data as Profile);
+            await reloadAuth();
+            setProfileMessage("Dados atualizados com sucesso.");
+        } catch (error) {
+            setProfileMessage(`Não foi possível atualizar os dados: ${error instanceof Error ? error.message : "erro desconhecido"}`);
+        } finally {
+            setSavingProfile(false);
+        }
+    };
+
     const handlePasswordReset = async (e: React.FormEvent) => {
         e.preventDefault();
         if (newPassword !== confirmPassword) {
             alert("A nova palavra-passe e a confirmação não coincidem.");
+            return;
+        }
+        if (newPassword.length < 8) {
+            alert("A nova palavra-passe deve ter pelo menos 8 caracteres.");
             return;
         }
 
@@ -79,7 +185,6 @@ export default function ProfilePage() {
             if (error) throw error;
 
             alert("Palavra-passe alterada com sucesso!");
-            setCurrentPassword("");
             setNewPassword("");
             setConfirmPassword("");
         } catch (error: any) {
@@ -138,43 +243,52 @@ export default function ProfilePage() {
 
                     {/* Informacoes Tab */}
                     <TabsContent value="info" className="mt-6 space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <Card className="p-6 space-y-4">
-                                <h3 className="font-playfair text-lg font-bold text-primary">Dados Pessoais</h3>
-                                <div className="space-y-3 text-sm font-medium">
-                                    <div className="flex justify-between border-b border-white/5 pb-2">
-                                        <span className="text-on-surface-variant">Nome Completo:</span>
-                                        <span className="text-on-surface font-semibold">{profile.full_name}</span>
-                                    </div>
-                                    <div className="flex justify-between border-b border-white/5 pb-2">
-                                        <span className="text-on-surface-variant">Email Institucional:</span>
-                                        <span className="text-on-surface font-semibold">{profile.email}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-on-surface-variant">Contacto Móvel:</span>
-                                        <span className="text-on-surface font-semibold">{profile.phone || "Não informado"}</span>
-                                    </div>
+                        <Card className="p-6">
+                            <form onSubmit={handleProfileUpdate} className="space-y-6">
+                                <div>
+                                    <h3 className="font-playfair text-lg font-bold text-primary">Editar dados do perfil</h3>
+                                    <p className="mt-1 text-xs text-on-surface-variant">O email, o papel e o estado da conta só podem ser alterados pelo administrador.</p>
                                 </div>
-                            </Card>
-
-                            <Card className="p-6 space-y-4">
-                                <h3 className="font-playfair text-lg font-bold text-primary">Dados Académicos</h3>
-                                <div className="space-y-3 text-sm font-medium">
-                                    <div className="flex justify-between border-b border-white/5 pb-2">
-                                        <span className="text-on-surface-variant">Instituição:</span>
-                                        <span className="text-on-surface font-semibold">{profile.university || "Não informada"}</span>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">Nome completo</label>
+                                        <Input required minLength={3} value={editableProfile.full_name} onChange={(e) => updateEditableProfile("full_name", e.target.value)} />
                                     </div>
-                                    <div className="flex justify-between border-b border-white/5 pb-2">
-                                        <span className="text-on-surface-variant">Curso:</span>
-                                        <span className="text-on-surface font-semibold">{profile.course || "Não informado"}</span>
+                                    <div>
+                                        <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">Email</label>
+                                        <Input value={profile.email} disabled />
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-on-surface-variant">Ano de Estudo:</span>
-                                        <span className="text-on-surface font-semibold">{profile.year_of_study ? `${profile.year_of_study}º Ano` : "Não informado"}</span>
+                                    <div>
+                                        <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">Contacto móvel</label>
+                                        <Input type="tel" placeholder="+258 84 000 0000" value={editableProfile.phone} onChange={(e) => updateEditableProfile("phone", e.target.value)} />
                                     </div>
+                                    <div>
+                                        <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">Instituição / especialidade</label>
+                                        <Input value={editableProfile.university} onChange={(e) => updateEditableProfile("university", e.target.value)} />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">Foto de perfil (URL)</label>
+                                        <Input type="url" placeholder="https://..." value={editableProfile.avatar_url} onChange={(e) => updateEditableProfile("avatar_url", e.target.value)} />
+                                    </div>
+                                    {profile.role === "ESTUDANTE" && (
+                                        <>
+                                            <div>
+                                                <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">Curso</label>
+                                                <Input value={editableProfile.course} onChange={(e) => updateEditableProfile("course", e.target.value)} />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">Ano de estudo</label>
+                                                <Input type="number" min={1} max={10} value={editableProfile.year_of_study} onChange={(e) => updateEditableProfile("year_of_study", e.target.value)} />
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
-                            </Card>
-                        </div>
+                                {profileMessage && <p className="text-sm text-on-surface-variant" role="status">{profileMessage}</p>}
+                                <Button type="submit" variant="primary" disabled={savingProfile} className="px-6 font-bold uppercase tracking-wider">
+                                    {savingProfile ? "A guardar..." : "Guardar alterações"}
+                                </Button>
+                            </form>
+                        </Card>
                     </TabsContent>
 
                     {/* Activity Tab */}

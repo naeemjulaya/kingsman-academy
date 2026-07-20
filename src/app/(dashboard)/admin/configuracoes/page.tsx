@@ -1,241 +1,194 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { RouteGuard } from "@/components/auth/route-guard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input, Switch } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
+interface Settings {
+  platform_name: string;
+  contact_email: string;
+  contact_phone: string;
+  logo_url: string;
+  mpesa_number: string;
+  emola_number: string;
+  bank_details: string;
+  payment_review_hours: number;
+  facebook_url: string;
+  instagram_url: string;
+  youtube_url: string;
+  linkedin_url: string;
+  whatsapp_url: string;
+}
+
+const defaults: Settings = {
+  platform_name: "Kingsman Academy",
+  contact_email: "suporte@kingsman.academy",
+  contact_phone: "",
+  logo_url: "",
+  mpesa_number: "",
+  emola_number: "",
+  bank_details: "",
+  payment_review_hours: 24,
+  facebook_url: "",
+  instagram_url: "",
+  youtube_url: "",
+  linkedin_url: "",
+  whatsapp_url: "",
+};
 
 export default function ConfiguracoesPage() {
   const [activeTab, setActiveTab] = useState("geral");
+  const [settings, setSettings] = useState<Settings>(defaults);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // State: Geral
-  const [nomePlataforma, setNomePlataforma] = useState("Kingsman Academy");
-  const [emailContacto, setEmailContacto] = useState("suporte@kingsman.academy");
-  const [logoUrl, setLogoUrl] = useState("https://kingsman.academy/logo.png");
-
-  // State: Pagamentos
-  const [mpesaKey, setMpesaKey] = useState("api_prod_mpesa_84920491823901");
-  const [mensalidadePreco, setMensalidadePreco] = useState(750);
-  const [precoAvulso, setPrecoAvulso] = useState(150);
-
-  // State: Notificações
-  const [notifInscricoes, setNotifInscricoes] = useState(true);
-  const [notifPagamentos, setNotifPagamentos] = useState(true);
-  const [emailTemplate, setEmailTemplate] = useState(
-    "Olá {{student_name}},\n\nO teu pagamento para a cadeira de {{course_name}} foi recebido e validado com sucesso. Bons estudos!\n\nAtenciosamente,\nEquipa Kingsman Academy."
-  );
-
-  // State: Segurança
-  const [minPasswordLength, setMinPasswordLength] = useState(8);
-  const [sessionTimeout, setSessionTimeout] = useState(60); // minutos
-
-  // Carregar dados guardados do LocalStorage ao iniciar (visto não haver tabela de config dedicada no schema)
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setNomePlataforma(localStorage.getItem("config_nomePlataforma") || "Kingsman Academy");
-      setEmailContacto(localStorage.getItem("config_emailContacto") || "suporte@kingsman.academy");
-      setLogoUrl(localStorage.getItem("config_logoUrl") || "https://kingsman.academy/logo.png");
-      setMpesaKey(localStorage.getItem("config_mpesaKey") || "api_prod_mpesa_84920491823901");
-      setMensalidadePreco(Number(localStorage.getItem("config_mensalidadePreco")) || 750);
-      setPrecoAvulso(Number(localStorage.getItem("config_precoAvulso")) || 150);
-      setNotifInscricoes(localStorage.getItem("config_notifInscricoes") !== "false");
-      setNotifPagamentos(localStorage.getItem("config_notifPagamentos") !== "false");
-      setEmailTemplate(localStorage.getItem("config_emailTemplate") || emailTemplate);
-      setMinPasswordLength(Number(localStorage.getItem("config_minPasswordLength")) || 8);
-      setSessionTimeout(Number(localStorage.getItem("config_sessionTimeout")) || 60);
-    }
+    fetch("/api/settings", { cache: "no-store" })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error ?? "Erro ao carregar configurações");
+        setSettings({ ...defaults, ...result });
+      })
+      .catch((error) => setMessage({ type: "error", text: error instanceof Error ? error.message : "Erro ao carregar configurações" }))
+      .finally(() => setLoading(false));
   }, []);
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      localStorage.setItem("config_nomePlataforma", nomePlataforma);
-      localStorage.setItem("config_emailContacto", emailContacto);
-      localStorage.setItem("config_logoUrl", logoUrl);
-      localStorage.setItem("config_mpesaKey", mpesaKey);
-      localStorage.setItem("config_mensalidadePreco", mensalidadePreco.toString());
-      localStorage.setItem("config_precoAvulso", precoAvulso.toString());
-      localStorage.setItem("config_notifInscricoes", notifInscricoes.toString());
-      localStorage.setItem("config_notifPagamentos", notifPagamentos.toString());
-      localStorage.setItem("config_emailTemplate", emailTemplate);
-      localStorage.setItem("config_minPasswordLength", minPasswordLength.toString());
-      localStorage.setItem("config_sessionTimeout", sessionTimeout.toString());
+  const update = <K extends keyof Settings>(key: K, value: Settings[K]) => {
+    setSettings((current) => ({ ...current, [key]: value }));
+    setMessage(null);
+  };
 
-      alert("Configurações do sistema gravadas localmente com sucesso!");
+  const handleSave = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setSaving(true);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Erro ao guardar configurações");
+      setMessage({ type: "success", text: "Configurações guardadas e disponíveis para toda a plataforma." });
     } catch (error) {
-      console.error(error);
-      alert("Erro ao gravar configurações.");
+      setMessage({ type: "error", text: error instanceof Error ? error.message : "Erro ao guardar configurações" });
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
     <RouteGuard allowedRoles={["ADMIN"]}>
       <div className="space-y-6 max-w-[1000px] mx-auto p-4 md:p-6">
-
-        {/* Cabeçalho */}
         <div>
-          <h1 className="text-3xl font-bold text-on-surface">Configurações do Sistema</h1>
+          <h1 className="text-3xl font-bold text-on-surface">Configurações da Plataforma</h1>
           <p className="text-sm text-on-surface-variant/70 mt-1">
-            Controle e edite parâmetros de funcionamento da plataforma, métodos de pagamento e segurança.
+            Defina contactos públicos, instruções dos pagamentos manuais e redes sociais.
           </p>
         </div>
 
-        {/* Layout de abas */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full justify-start overflow-x-auto">
-            <TabsTrigger value="geral">Geral</TabsTrigger>
-            <TabsTrigger value="pagamentos">Pagamentos</TabsTrigger>
-            <TabsTrigger value="notificacoes">Notificações</TabsTrigger>
-            <TabsTrigger value="seguranca">Segurança</TabsTrigger>
-          </TabsList>
+        {message && (
+          <div className={`rounded-lg border p-4 text-sm ${message.type === "success" ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300" : "border-red-500/20 bg-red-500/10 text-red-300"}`}>
+            {message.text}
+          </div>
+        )}
 
-          <form onSubmit={handleSave} className="mt-6 space-y-6">
+        {loading ? (
+          <Card className="p-10 text-center text-sm text-on-surface-variant">A carregar configurações…</Card>
+        ) : (
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="w-full justify-start overflow-x-auto">
+              <TabsTrigger value="geral">Identidade e Contactos</TabsTrigger>
+              <TabsTrigger value="pagamentos">Pagamentos Manuais</TabsTrigger>
+              <TabsTrigger value="redes">Redes Sociais</TabsTrigger>
+            </TabsList>
 
-            {/* Aba Geral */}
-            <TabsContent value="geral" className="space-y-6">
-              <Card className="p-6 space-y-4">
-                <h3 className="font-playfair text-lg font-bold text-primary">Informações da Plataforma</h3>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Nome da Plataforma</label>
-                  <Input
-                    value={nomePlataforma}
-                    onChange={(e) => setNomePlataforma(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Email de Contacto</label>
-                  <Input
-                    type="email"
-                    value={emailContacto}
-                    onChange={(e) => setEmailContacto(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">URL do Logótipo</label>
-                  <Input
-                    value={logoUrl}
-                    onChange={(e) => setLogoUrl(e.target.value)}
-                  />
-                </div>
-              </Card>
-            </TabsContent>
-
-            {/* Aba Pagamentos */}
-            <TabsContent value="pagamentos" className="space-y-6">
-              <Card className="p-6 space-y-4">
-                <h3 className="font-playfair text-lg font-bold text-primary">Integrações & Preços</h3>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Chave de Produção M-Pesa (API)</label>
-                  <Input
-                    type="password"
-                    value={mpesaKey}
-                    onChange={(e) => setMpesaKey(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Preço Mensal (MT)</label>
-                    <Input
-                      type="number"
-                      value={mensalidadePreco}
-                      onChange={(e) => setMensalidadePreco(Number(e.target.value))}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Preço por Aula Avulsa (MT)</label>
-                    <Input
-                      type="number"
-                      value={precoAvulso}
-                      onChange={(e) => setPrecoAvulso(Number(e.target.value))}
-                      required
-                    />
-                  </div>
-                </div>
-              </Card>
-            </TabsContent>
-
-            {/* Aba Notificações */}
-            <TabsContent value="notificacoes" className="space-y-6">
-              <Card className="p-6 space-y-4">
-                <h3 className="font-playfair text-lg font-bold text-primary">Configurações de Alerta</h3>
-
-                <div className="flex items-center justify-between border-b border-primary/5 pb-3">
+            <form onSubmit={handleSave} className="mt-6 space-y-6">
+              <TabsContent value="geral" className="space-y-6">
+                <Card className="p-6 space-y-5">
                   <div>
-                    <p className="text-sm font-semibold text-on-surface">Notificar sobre Novas Inscrições</p>
-                    <p className="text-xs text-on-surface-variant/70">Receber alertas de e-mail ao criar novos utilizadores.</p>
+                    <h2 className="font-playfair text-lg font-bold text-primary">Identidade pública</h2>
+                    <p className="text-xs text-on-surface-variant mt-1">Informações apresentadas aos estudantes nos pontos de contacto da plataforma.</p>
                   </div>
-                  <Switch checked={notifInscricoes} onCheckedChange={setNotifInscricoes} />
-                </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Field label="Nome da plataforma">
+                      <Input required value={settings.platform_name} onChange={(e) => update("platform_name", e.target.value)} />
+                    </Field>
+                    <Field label="Email de suporte">
+                      <Input required type="email" value={settings.contact_email} onChange={(e) => update("contact_email", e.target.value)} />
+                    </Field>
+                    <Field label="Telefone de suporte">
+                      <Input type="tel" placeholder="+258 84 000 0000" value={settings.contact_phone} onChange={(e) => update("contact_phone", e.target.value)} />
+                    </Field>
+                    <Field label="URL do logótipo">
+                      <Input type="url" placeholder="https://..." value={settings.logo_url} onChange={(e) => update("logo_url", e.target.value)} />
+                    </Field>
+                  </div>
+                </Card>
+              </TabsContent>
 
-                <div className="flex items-center justify-between border-b border-primary/5 pb-3">
+              <TabsContent value="pagamentos" className="space-y-6">
+                <Card className="p-6 space-y-5">
                   <div>
-                    <p className="text-sm font-semibold text-on-surface">Notificar Confirmação de Pagamento</p>
-                    <p className="text-xs text-on-surface-variant/70">Disparar recibo para o aluno após validação administrativa.</p>
+                    <h2 className="font-playfair text-lg font-bold text-primary">Dados para pagamento manual</h2>
+                    <p className="text-xs text-on-surface-variant mt-1">Estes dados são mostrados ao estudante no checkout. Não são chaves de API.</p>
                   </div>
-                  <Switch checked={notifPagamentos} onCheckedChange={setNotifPagamentos} />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Template de Confirmação (E-mail)</label>
-                  <textarea
-                    className="flex min-h-[120px] w-full rounded-lg bg-surface-container border-none p-3 text-sm text-on-surface focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                    value={emailTemplate}
-                    onChange={(e) => setEmailTemplate(e.target.value)}
-                  />
-                  <p className="text-[10px] text-[#808080]">Variáveis dinâmicas aceites: {"{{student_name}}"}, {"{{course_name}}"}</p>
-                </div>
-              </Card>
-            </TabsContent>
-
-            {/* Aba Segurança */}
-            <TabsContent value="seguranca" className="space-y-6">
-              <Card className="p-6 space-y-4">
-                <h3 className="font-playfair text-lg font-bold text-primary">Políticas de Segurança</h3>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Comprimento Mínimo Password</label>
-                    <Input
-                      type="number"
-                      value={minPasswordLength}
-                      onChange={(e) => setMinPasswordLength(Number(e.target.value))}
-                      required
-                    />
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Field label="Número ou código M-Pesa">
+                      <Input placeholder="Ex.: 84 000 0000" value={settings.mpesa_number} onChange={(e) => update("mpesa_number", e.target.value)} />
+                    </Field>
+                    <Field label="Número ou código e-Mola">
+                      <Input placeholder="Ex.: 86 000 0000" value={settings.emola_number} onChange={(e) => update("emola_number", e.target.value)} />
+                    </Field>
+                    <Field label="Prazo de validação (horas)">
+                      <Input required type="number" min={1} max={168} value={settings.payment_review_hours} onChange={(e) => update("payment_review_hours", Number(e.target.value))} />
+                    </Field>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Timeout de Sessão (Minutos)</label>
-                    <Input
-                      type="number"
-                      value={sessionTimeout}
-                      onChange={(e) => setSessionTimeout(Number(e.target.value))}
-                      required
-                    />
+                  <Field label="Dados bancários e instruções adicionais">
+                    <Textarea rows={5} placeholder="Banco, NIB/IBAN, nome do titular e referência a utilizar..." value={settings.bank_details} onChange={(e) => update("bank_details", e.target.value)} />
+                  </Field>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="redes" className="space-y-6">
+                <Card className="p-6 space-y-5">
+                  <div>
+                    <h2 className="font-playfair text-lg font-bold text-primary">Redes sociais</h2>
+                    <p className="text-xs text-on-surface-variant mt-1">Apenas links preenchidos serão exibidos no rodapé público.</p>
                   </div>
-                </div>
-              </Card>
-            </TabsContent>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {Object.entries({ facebook_url: "Facebook", instagram_url: "Instagram", youtube_url: "YouTube", linkedin_url: "LinkedIn", whatsapp_url: "WhatsApp" }).map(([key, label]) => (
+                      <Field label={label} key={key}>
+                        <Input type="url" placeholder="https://..." value={settings[key as keyof Settings] as string} onChange={(e) => update(key as keyof Settings, e.target.value)} />
+                      </Field>
+                    ))}
+                  </div>
+                </Card>
+              </TabsContent>
 
-            {/* Botão de Gravar */}
-            <div className="flex justify-end">
-              <Button type="submit" variant="primary" className="px-8 font-bold uppercase tracking-wider">
-                Guardar Alterações
-              </Button>
-            </div>
-
-          </form>
-        </Tabs>
+              <div className="flex justify-end">
+                <Button type="submit" variant="primary" isLoading={saving} className="px-8 font-bold uppercase tracking-wider">
+                  Guardar Alterações
+                </Button>
+              </div>
+            </form>
+          </Tabs>
+        )}
       </div>
     </RouteGuard>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">{label}</label>
+      {children}
+    </div>
   );
 }

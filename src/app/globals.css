@@ -67,19 +67,6 @@ h1, h2, h3, h4, h5, h6 {
   background: linear-gradient(135deg, #FF48FF 0%, #9c009e 100%);
 }
 
-.glitch-hover:hover {
-  animation: glitch-anim 0.1s linear infinite;
-}
-
-@keyframes glitch-anim {
-  0% { transform: translate(0); }
-  20% { transform: translate(-2px, 2px); color: #ffaaf5; }
-  40% { transform: translate(-2px, -2px); }
-  60% { transform: translate(2px, 2px); color: #ff48ff; }
-  80% { transform: translate(2px, -2px); }
-  100% { transform: translate(0); }
-}
-
 .scanline {
   width: 100%;
   height: 100px;

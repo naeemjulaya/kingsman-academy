@@ -8,6 +8,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 type PaymentMethod = "MPESA" | "EMOLA" | "TRANSFERENCIA";
+interface PaymentSettings {
+    mpesa_number: string;
+    emola_number: string;
+    bank_details: string;
+    payment_review_hours: number;
+}
 
 export default function CheckoutContent() {
     const router = useRouter();
@@ -25,6 +31,19 @@ export default function CheckoutContent() {
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(2);
     const [transactionId, setTransactionId] = useState<string>("");
+    const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>({
+        mpesa_number: "",
+        emola_number: "",
+        bank_details: "",
+        payment_review_hours: 24,
+    });
+
+    useEffect(() => {
+        fetch("/api/settings")
+            .then((response) => response.json())
+            .then((data) => setPaymentSettings((current) => ({ ...current, ...data })))
+            .catch(() => undefined);
+    }, []);
 
     useEffect(() => {
         if (courseId) {
@@ -279,7 +298,7 @@ export default function CheckoutContent() {
                                     </li>
                                     <li className="flex gap-3">
                                         <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">3</span>
-                                        <p>Introduza o código da instituição: <span className="text-amber-200 font-mono">882200</span>.</p>
+                                        <p>Envie para o número ou código: <span className="text-amber-200 font-mono">{paymentSettings.mpesa_number || "Não configurado"}</span>.</p>
                                     </li>
                                     <li className="flex gap-3">
                                         <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">4</span>
@@ -300,7 +319,7 @@ export default function CheckoutContent() {
                                     </li>
                                     <li className="flex gap-3">
                                         <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">3</span>
-                                        <p>Introduza a entidade Kingsman: <span className="text-amber-200 font-mono">998811</span>.</p>
+                                        <p>Envie para o número ou código: <span className="text-amber-200 font-mono">{paymentSettings.emola_number || "Não configurado"}</span>.</p>
                                     </li>
                                     <li className="flex gap-3">
                                         <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">4</span>
@@ -312,11 +331,8 @@ export default function CheckoutContent() {
                             {method === "TRANSFERENCIA" && (
                                 <div className="space-y-4 text-sm text-on-surface-variant font-medium">
                                     <p>Efectue a transferência bancária para a nossa conta institucional e anexe o comprovativo:</p>
-                                    <div className="bg-[#0A0A0A]/40 p-4 rounded-lg border border-amber-500/10 space-y-2 font-mono text-xs text-amber-200">
-                                        <div>BANCO: BCI (Banco Comercial e de Investimentos)</div>
-                                        <div>CONTA: 12903820-10-2</div>
-                                        <div>NIB: 0008.0000.1290.3820.1023.2</div>
-                                        <div>TITULAR: Kingsman Academy Lda.</div>
+                                    <div className="bg-[#0A0A0A]/40 p-4 rounded-lg border border-amber-500/10 whitespace-pre-wrap font-mono text-xs text-amber-200">
+                                        {paymentSettings.bank_details || "Dados bancários ainda não configurados pelo administrador."}
                                     </div>
                                 </div>
                             )}
@@ -424,7 +440,7 @@ export default function CheckoutContent() {
                     </div>
 
                     <p className="text-xs text-on-surface-variant/80 max-w-xs mx-auto leading-relaxed">
-                        A aprovação demora tipicamente menos de 24 horas. Receberá uma notificação quando estiver concluído.
+                        A aprovação demora tipicamente até {paymentSettings.payment_review_hours} horas. Receberá uma notificação quando estiver concluído.
                     </p>
 
                     <div className="pt-4">

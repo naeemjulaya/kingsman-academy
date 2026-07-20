@@ -1,9 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { extractYouTubeId } from "@/lib/youtube";
 
 // Atualizadoo: Definindo params como uma Promise para satisfazer o Next.js
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -88,17 +89,4 @@ export async function GET(
       { status: 500 }
     );
   }
-}
-
-function extractYouTubeId(url: string): string | null {
-  const patterns = [
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s?]+)/,
-    /youtube\.com\/watch\?.*v=([^&\s]+)/,
-  ];
-
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match) return match[1];
-  }
-  return null;
 }

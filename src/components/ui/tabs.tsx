@@ -1,75 +1,69 @@
-import React from "react";
+"use client";
+
+import React, { createContext, useContext } from "react";
 import { cn } from "@/lib/utils";
+
+interface TabsContextValue {
+  value: string;
+  onValueChange: (value: string) => void;
+}
+
+const TabsContext = createContext<TabsContextValue | null>(null);
 
 interface TabsProps extends React.HTMLAttributes<HTMLDivElement> {
   value: string;
   onValueChange: (value: string) => void;
 }
 
-export const Tabs = ({ value, onValueChange, className, children, ...props }: TabsProps) => {
+export function Tabs({ value, onValueChange, className, children, ...props }: TabsProps) {
   return (
-    <div className={cn("space-y-4", className)} {...props}>
-      {React.Children.map(children, (child) => {
-        if (React.isValidElement(child)) {
-          return React.cloneElement(child as React.ReactElement<any>, { value, onValueChange });
-        }
-        return child;
-      })}
+    <TabsContext.Provider value={{ value, onValueChange }}>
+      <div className={cn("space-y-4", className)} {...props}>{children}</div>
+    </TabsContext.Provider>
+  );
+}
+
+export function TabsList({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div role="tablist" className={cn("inline-flex items-center justify-start rounded-lg bg-surface-container-low/40 p-1 border border-border/10", className)} {...props}>
+      {children}
     </div>
   );
-};
+}
 
-export const TabsList = ({ className, children, value, onValueChange, ...props }: any) => {
-  return (
-    <div
-      className={cn(
-        "inline-flex items-center justify-start rounded-lg bg-surface-container-low/40 p-1 border border-border/10",
-        className
-      )}
-      {...props}
-    >
-      {React.Children.map(children, (child) => {
-        if (React.isValidElement(child)) {
-          return React.cloneElement(child as React.ReactElement<any>, { activeValue: value, onClick: onValueChange });
-        }
-        return child;
-      })}
-    </div>
-  );
-};
+interface TabsTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  value: string;
+}
 
-export const TabsTrigger = ({ className, value, activeValue, onClick, children, ...props }: any) => {
-  const isActive = value === activeValue;
+export function TabsTrigger({ className, value, children, ...props }: TabsTriggerProps) {
+  const context = useContext(TabsContext);
+  if (!context) throw new Error("TabsTrigger deve ser usado dentro de Tabs");
+  const isActive = value === context.value;
   return (
     <button
       type="button"
-      onClick={() => onClick(value)}
+      role="tab"
+      aria-selected={isActive}
+      onClick={() => context.onValueChange(value)}
       className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-semibold transition-all cursor-pointer",
-        {
-          "bg-primary/10 text-primary shadow-sm border border-primary/20": isActive,
-          "text-on-surface-variant hover:text-primary hover:bg-primary/5": !isActive,
-        },
-        className
+        "inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-semibold transition-colors cursor-pointer",
+        isActive ? "bg-primary/10 text-primary shadow-sm border border-primary/20" : "text-on-surface-variant hover:text-primary hover:bg-primary/5",
+        className,
       )}
       {...props}
     >
       {children}
     </button>
   );
-};
+}
 
-export const TabsContent = ({ className, value, activeValue, children, ...props }: any) => {
-  if (value !== activeValue) return null;
-  return (
-    <div
-      className={cn(
-        "ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </div>
-  );
-};
+interface TabsContentProps extends React.HTMLAttributes<HTMLDivElement> {
+  value: string;
+}
+
+export function TabsContent({ className, value, children, ...props }: TabsContentProps) {
+  const context = useContext(TabsContext);
+  if (!context) throw new Error("TabsContent deve ser usado dentro de Tabs");
+  if (value !== context.value) return null;
+  return <div role="tabpanel" className={cn("focus-visible:outline-none", className)} {...props}>{children}</div>;
+}

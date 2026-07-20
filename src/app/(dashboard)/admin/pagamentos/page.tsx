@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
+import { getErrorMessage } from "@/lib/errors";
 
 interface Pagamento {
   id: string;
@@ -75,23 +76,17 @@ export default function PagamentosPage() {
 
   const handleAction = async (id: string, newStatus: "CONFIRMED" | "REJECTED") => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      const { error } = await supabase
-        .from("payments")
-        .update({
-          status: newStatus,
-          confirmed_by: user?.id || null,
-          confirmed_at: new Date().toISOString()
-        })
-        .eq("id", id);
+      const { error } = await supabase.rpc("admin_validate_payment", {
+        p_payment_id: id,
+        p_status: newStatus,
+      });
 
       if (error) throw error;
 
       setPayments(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p));
       alert(`Pagamento foi ${newStatus === "CONFIRMED" ? "confirmado" : "rejeitado"} com sucesso!`);
-    } catch (error: any) {
-      alert("Erro ao validar pagamento: " + error.message);
+    } catch (error: unknown) {
+      alert("Erro ao validar pagamento: " + getErrorMessage(error));
     }
   };
 

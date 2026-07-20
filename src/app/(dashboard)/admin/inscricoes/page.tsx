@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
+import { getErrorMessage } from "@/lib/errors";
 
 interface Inscricao {
   id: string;
@@ -75,17 +76,17 @@ export default function InscricoesPage() {
 
   const handleUpdateStatus = async (id: string, newStatus: "ACTIVE" | "CANCELLED") => {
     try {
-      const { error } = await supabase
-        .from("enrollments")
-        .update({ status: newStatus })
-        .eq("id", id);
+      const { error } = await supabase.rpc("admin_update_enrollment", {
+        p_enrollment_id: id,
+        p_status: newStatus,
+      });
 
       if (error) throw error;
 
       setInscricoes(prev => prev.map(ins => ins.id === id ? { ...ins, status: newStatus } : ins));
       alert(`Matrícula atualizada para ${newStatus === "ACTIVE" ? "Ativa" : "Cancelada"} com sucesso!`);
-    } catch (error: any) {
-      alert("Erro ao atualizar matrícula: " + error.message);
+    } catch (error: unknown) {
+      alert("Erro ao atualizar matrícula: " + getErrorMessage(error));
     }
   };
 

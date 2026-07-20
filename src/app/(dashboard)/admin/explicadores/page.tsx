@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
+import { getErrorMessage } from "@/lib/errors";
 
 interface Explicador {
   id: string;
@@ -20,6 +21,8 @@ interface Explicador {
   avatar_url: string;
   bio: string;
   is_active: boolean;
+  account_role: "EXPLICADOR" | "ADMIN";
+  password?: string;
 }
 
 export default function ExplicadoresPage() {
@@ -50,11 +53,11 @@ export default function ExplicadoresPage() {
   const fetchExplicadores = async () => {
     setLoading(true);
     try {
-      // Get all profiles with role = 'EXPLICADOR'
+      // Administrators may also teach without losing their administrative role.
       const { data: tutorsData, error: tutorsError } = await supabase
         .from("profiles")
         .select("*")
-        .eq("role", "EXPLICADOR")
+        .in("role", ["EXPLICADOR", "ADMIN"])
         .order("full_name", { ascending: true });
 
       if (tutorsError) throw tutorsError;
@@ -96,12 +99,17 @@ export default function ExplicadoresPage() {
             videos_count: videosCount,
             avatar_url: t.avatar_url || "",
             bio: t.phone || "", // Storing phone in bio placeholder if nothing else, or keeping static bio
-            is_active: t.status === "active"
+            is_active: t.status === "active",
+            account_role: t.role,
           };
         })
       );
 
-      setExplicadores(extendedTutors);
+      // An administrator is listed here only when they actually teach a course.
+      // This keeps ordinary administrative accounts out of the tutor directory.
+      setExplicadores(extendedTutors.filter(
+        (t) => t.account_role === "EXPLICADOR" || t.courses_count > 0
+      ));
     } catch (error) {
       console.error("Erro ao carregar explicadores:", error);
     } finally {
@@ -133,45 +141,18 @@ export default function ExplicadoresPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (isEdit && selectedExplicador.id) {
-        // Update
-        const { error } = await supabase
-          .from("profiles")
-          .update({
-            full_name: selectedExplicador.name,
-            email: selectedExplicador.email,
-            university: selectedExplicador.speciality,
-            avatar_url: selectedExplicador.avatar_url,
-            status: selectedExplicador.is_active ? "active" : "inactive"
-          })
-          .eq("id", selectedExplicador.id);
-
-        if (error) throw error;
-      } else {
-        // Create profiles row. In Next/Supabase, auth usually requires signup,
-        // but for mock/admin view we insert direct profiles data. 
-        // Note: For constraint user_id (needs FK to auth.users), we generate a random UUID or use system admin user.
-        // Let's create user_id mock or raise error if schema constraints block it, or we fallback gracefully.
-        const { data: { user } } = await supabase.auth.getUser();
-        const { error } = await supabase
-          .from("profiles")
-          .insert({
-            user_id: user?.id || "00000000-0000-0000-0000-000000000000", // Fallback system level uuid
-            full_name: selectedExplicador.name,
-            email: selectedExplicador.email,
-            role: "EXPLICADOR",
-            university: selectedExplicador.speciality,
-            avatar_url: selectedExplicador.avatar_url,
-            status: selectedExplicador.is_active ? "active" : "inactive"
-          });
-
-        if (error) throw error;
-      }
+      const response = await fetch("/api/admin/tutors", {
+        method: isEdit ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(selectedExplicador),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Não foi possível guardar o explicador");
 
       setIsOpen(false);
       fetchExplicadores();
-    } catch (error: any) {
-      alert("Erro ao gravar explicador: " + error.message);
+    } catch (error: unknown) {
+      alert("Erro ao gravar explicador: " + getErrorMessage(error));
     }
   };
 
@@ -185,8 +166,8 @@ export default function ExplicadoresPage() {
 
       if (error) throw error;
       setExplicadores(prev => prev.map(t => t.id === id ? { ...t, is_active: !currentActive } : t));
-    } catch (error: any) {
-      alert("Erro ao alterar o estado do explicador: " + error.message);
+    } catch (error: unknown) {
+      alert("Erro ao alterar o estado do explicador: " + getErrorMessage(error));
     }
   };
 
@@ -273,7 +254,8 @@ export default function ExplicadoresPage() {
                             <span className="material-symbols-outlined text-sm text-on-surface-variant">person</span>
                           )}
                         </div>
-                        {t.name}
+                        <span>{t.name}</span>
+                        {t.account_role === "ADMIN" && <Badge variant="primary">Admin</Badge>}
                       </TableCell>
                       <TableCell>{t.email}</TableCell>
                       <TableCell className="font-medium">{t.speciality}</TableCell>
@@ -330,6 +312,19 @@ export default function ExplicadoresPage() {
                   placeholder="Ex: Prof. Keven Gulele"
                   value={selectedExplicador.name}
                   onChange={(e) => setSelectedExplicador({ ...selectedExplicador, name: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">
+                  {isEdit ? "Nova palavra-passe (opcional)" : "Palavra-passe temporária (opcional)"}
+                </label>
+                <Input
+                  type="password"
+                  minLength={8}
+                  placeholder={isEdit ? "Deixe vazio para não alterar" : "Gerada automaticamente se ficar vazio"}
+                  value={selectedExplicador.password ?? ""}
+                  onChange={(e) => setSelectedExplicador({ ...selectedExplicador, password: e.target.value })}
                 />
               </div>
 

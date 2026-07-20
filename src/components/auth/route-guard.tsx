@@ -12,11 +12,12 @@ interface RouteGuardProps {
 
 // Componente interno que contém a lógica de autenticação- Qwen
 function RouteGuardContent({ children, allowedRoles, fallback }: RouteGuardProps) {
-  const { user, loading, hasRole } = useAuth();
+  const { user, loading, error, hasRole, reload } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
+    if (error) return;
     if (!loading && !user) {
       router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
     }
@@ -31,12 +32,24 @@ function RouteGuardContent({ children, allowedRoles, fallback }: RouteGuardProps
       };
       router.push(dashboards[user.role]);
     }
-  }, [user, loading, hasRole, allowedRoles, router, pathname]);
+  }, [user, loading, error, hasRole, allowedRoles, router, pathname]);
 
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#0A0A0A]">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#FF48FF] border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-lg rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
+        <h2 className="font-playfair text-xl font-bold text-red-300">Não foi possível carregar a conta</h2>
+        <p className="mt-2 text-sm text-on-surface-variant">{error}</p>
+        <button onClick={() => void reload()} className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-black">
+          Tentar novamente
+        </button>
       </div>
     );
   }

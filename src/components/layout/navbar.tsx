@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 export const Navbar = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const supabase = createClient();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -58,7 +58,7 @@ export const Navbar = () => {
   else if (isExplicador) roleTitle = "Painel de Explicador";
 
   const firstName = user?.fullName?.split(" ")[0] || "Utilizador";
-  const greeting = isAdmin ? "Painel de Administração" : `Bom dia, ${firstName}`;
+  const greeting = loading ? "A carregar perfil…" : isAdmin ? "Painel de Administração" : `Bom dia, ${firstName}`;
 
   const formatDate = () => {
     const options: Intl.DateTimeFormatOptions = {

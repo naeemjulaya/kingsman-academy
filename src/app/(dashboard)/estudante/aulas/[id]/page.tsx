@@ -66,7 +66,7 @@ export default function LessonPlayerPage() {
       const { data: lessonData, error: lessonError } = await supabase
         .from("lessons")
         .select(`
-          id, title, topic, description, youtube_link, duration, order_index, course_id,
+          id, title, topic, description, duration, order_index, course_id,
           courses:course_id (name)
         `)
         .eq("id", lessonId)
@@ -113,7 +113,7 @@ export default function LessonPlayerPage() {
         title: lessonData.title,
         topic: lessonData.topic,
         description: lessonData.description,
-        youtube_link: lessonData.youtube_link,
+        youtube_link: "",
         duration: lessonData.duration,
         order_index: lessonData.order_index,
         course_id: lessonData.course_id,
@@ -122,19 +122,11 @@ export default function LessonPlayerPage() {
 
       setLesson(formattedLesson);
 
-      // 4. Extrai video ID e constrói URL segura do iframe
-      const videoId = extractYouTubeId(lessonData.youtube_link);
-      if (videoId) {
-        setVideoUrl(
-          `https://www.youtube.com/embed/${videoId}?` +
-          `modestbranding=1&` +
-          `rel=0&` +
-          `showinfo=0&` +
-          `controls=1&` +
-          `fs=1&` +
-          `origin=${typeof window !== 'undefined' ? window.location.origin : ''}`
-        );
-      }
+      // 4. O link original nunca é lido pelo browser; a API volta a validar a matrícula.
+      const videoResponse = await fetch(`/api/lessons/${lessonId}/video`, { cache: "no-store" });
+      if (!videoResponse.ok) throw new Error("Não foi possível autorizar este vídeo");
+      const videoPayload: { videoUrl: string } = await videoResponse.json();
+      setVideoUrl(`${videoPayload.videoUrl}&origin=${encodeURIComponent(window.location.origin)}`);
 
       // 5. Busca materiais
       const { data: materialsData } = await supabase
@@ -208,19 +200,6 @@ export default function LessonPlayerPage() {
     } catch (error) {
       console.error("Erro ao registrar progresso:", error);
     }
-  }
-
-  function extractYouTubeId(url: string): string | null {
-    const patterns = [
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s?]+)/,
-      /youtube\.com\/watch\?.*v=([^&\s]+)/,
-    ];
-
-    for (const pattern of patterns) {
-      const match = url.match(pattern);
-      if (match) return match[1];
-    }
-    return null;
   }
 
   async function downloadMaterial(fileUrl: string, title: string) {

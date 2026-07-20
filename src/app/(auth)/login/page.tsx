@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EmailMagicLinkForm } from "@/components/auth/email-magic-link-form";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,6 +15,11 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const supabase = createClient();
+
+  useEffect(() => {
+    const oauthError = new URLSearchParams(window.location.search).get("error");
+    if (oauthError) setError(oauthError);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,7 +66,15 @@ export default function LoginPage() {
       <div className="scanning-line opacity-25"></div>
 
       <h3 className="font-playfair text-2xl text-on-surface mb-2 font-bold uppercase">Entrar na Academia</h3>
-      <p className="text-xs text-on-surface-variant/70 mb-6 font-semibold">Introduza as suas credenciais para continuar.</p>
+      <p className="text-xs text-on-surface-variant/70 mb-6 font-semibold">Entre ou crie a sua conta através de um link seguro enviado por email.</p>
+
+      <EmailMagicLinkForm onError={setError} />
+
+      <div className="flex items-center justify-between my-5">
+        <hr className="w-[35%] border-border/10" />
+        <span className="text-[10px] text-on-surface-variant/60 font-semibold uppercase">ou usar palavra-passe</span>
+        <hr className="w-[35%] border-border/10" />
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -102,22 +116,6 @@ export default function LoginPage() {
           Entrar
         </Button>
 
-        <div className="flex items-center justify-between my-4">
-          <hr className="w-[40%] border-border/10" />
-          <span className="text-xs text-on-surface-variant/60 font-semibold uppercase">ou</span>
-          <hr className="w-[40%] border-border/10" />
-        </div>
-
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full py-3 font-semibold text-sm flex items-center justify-center gap-2"
-        >
-          <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-            <path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.113-5.136 4.113-3.472 0-6.29-2.818-6.29-6.29 0-3.472 2.818-6.29 6.29-6.29 1.506 0 2.88.535 3.96 1.427l3.13-3.13C18.915 2.139 15.82 1 12.24 1 6.033 1 1 6.033 1 12.24s5.033 11.24 11.24 11.24c6.478 0 10.793-4.537 10.793-11.012 0-.746-.067-1.433-.194-2.183H12.24z" />
-          </svg>
-          Continuar com Google
-        </Button>
       </form>
 
       <div className="mt-6 text-center">
