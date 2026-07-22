@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SelectInput } from "@/components/ui/select_input";
 import { Badge } from "@/components/ui/badge";
+import { getCourseDescription } from "@/lib/course-descriptions";
 
 interface CourseWithTutor {
   id: string;
@@ -72,8 +73,8 @@ export default function CourseCatalogue() {
           id: c.id,
           name: c.name,
           department: c.department || "Geral",
-          description: c.description || "Sem descrição disponível.",
-          price_monthly: c.price_monthly || 750,
+          description: getCourseDescription(c.name, c.description),
+          price_monthly: c.price_monthly || 650,
           tutorName: tutor?.full_name || "Não Atribuído",
           tutorAvatar: tutor?.avatar_url || "",
         };

@@ -86,7 +86,7 @@ export default function StudentDashboard() {
         if (nextDue && nextDue.end_date) {
           const courseData = Array.isArray(nextDue.courses) ? nextDue.courses[0] : nextDue.courses;
           if (courseData) {
-            nextPaymentAmount = (courseData as any).price_monthly || 750;
+            nextPaymentAmount = (courseData as any).price_monthly || 650;
             nextPaymentDate = new Date(nextDue.end_date).toLocaleDateString('pt-PT');
           }
         }

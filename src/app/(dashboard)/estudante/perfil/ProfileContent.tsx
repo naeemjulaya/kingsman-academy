@@ -22,6 +22,7 @@ type Profile = {
     course: string | null;
     year_of_study: number | null;
     avatar_url: string | null;
+    bio: string | null;
 };
 
 type EditableProfile = {
@@ -31,6 +32,7 @@ type EditableProfile = {
     course: string;
     year_of_study: string;
     avatar_url: string;
+    bio: string;
 };
 
 const emptyEditableProfile: EditableProfile = {
@@ -40,6 +42,7 @@ const emptyEditableProfile: EditableProfile = {
     course: "",
     year_of_study: "",
     avatar_url: "",
+    bio: "",
 };
 
 export default function ProfilePage() {
@@ -86,6 +89,7 @@ export default function ProfilePage() {
                     course: loadedProfile.course || "",
                     year_of_study: loadedProfile.year_of_study?.toString() || "",
                     avatar_url: loadedProfile.avatar_url || "",
+                    bio: loadedProfile.bio || "",
                 });
             }
 
@@ -138,6 +142,9 @@ export default function ProfilePage() {
                 phone: editableProfile.phone.trim() || null,
                 university: editableProfile.university.trim() || null,
                 avatar_url: editableProfile.avatar_url.trim() || null,
+                ...(profile.role === "EXPLICADOR" || profile.role === "ADMIN" ? {
+                    bio: editableProfile.bio.trim() || null,
+                } : {}),
                 ...(profile.role === "ESTUDANTE" ? {
                     course: editableProfile.course.trim() || null,
                     year_of_study: year,
@@ -268,8 +275,21 @@ export default function ProfilePage() {
                                     </div>
                                     <div className="md:col-span-2">
                                         <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">Foto de perfil (URL)</label>
-                                        <Input type="url" placeholder="https://..." value={editableProfile.avatar_url} onChange={(e) => updateEditableProfile("avatar_url", e.target.value)} />
+                                        <Input type="url" placeholder="https://res.cloudinary.com/..." value={editableProfile.avatar_url} onChange={(e) => updateEditableProfile("avatar_url", e.target.value)} />
                                     </div>
+                                    {(profile.role === "EXPLICADOR" || profile.role === "ADMIN") && (
+                                        <div className="md:col-span-2">
+                                            <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">Biografia profissional</label>
+                                            <textarea
+                                                rows={7}
+                                                maxLength={2000}
+                                                value={editableProfile.bio}
+                                                onChange={(e) => updateEditableProfile("bio", e.target.value)}
+                                                placeholder="Apresente a sua formação, experiência e metodologia de ensino..."
+                                                className="w-full resize-y rounded-lg border border-border/20 bg-surface-container px-3 py-2 text-sm text-on-surface outline-none transition-colors placeholder:text-on-surface-variant/50 focus:border-primary/60"
+                                            />
+                                        </div>
+                                    )}
                                     {profile.role === "ESTUDANTE" && (
                                         <>
                                             <div>

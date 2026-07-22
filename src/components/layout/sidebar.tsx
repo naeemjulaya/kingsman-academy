@@ -18,7 +18,7 @@ const MENU_ITEMS: Record<string, MenuItem[]> = {
     { title: "Minhas Cadeiras", href: "/estudante/cadeiras", icon: "book" },
     { title: "Aulas", href: "/estudante/aulas", icon: "play_circle" },
     { title: "Pagamentos", href: "/estudante/pagamento", icon: "payments" },
-    { title: "Mensagens", href: "/estudante/mensagens", icon: "chat" },
+    { title: "Redes Sociais", href: "/estudante/redes-sociais", icon: "share" },
     { title: "Perfil", href: "/estudante/perfil", icon: "account_circle" },
   ],
   EXPLICADOR: [
@@ -45,6 +45,7 @@ const MENU_ITEMS: Record<string, MenuItem[]> = {
     { title: "Cadeiras", href: "/admin/cadeiras", icon: "menu_book" },
     { title: "Explicadores", href: "/admin/explicadores", icon: "diversity_3" },
     { title: "Vídeos", href: "/admin/videos", icon: "video_library" },
+    { title: "Materiais", href: "/explicador/materiais", icon: "folder" },
     { title: "Pagamentos", href: "/admin/pagamentos", icon: "receipt_long" },
     { title: "Inscrições", href: "/admin/inscricoes", icon: "assignment" },
     { title: "Métricas", href: "/admin/metricas", icon: "analytics" },

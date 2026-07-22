@@ -8,6 +8,7 @@ const labels: Record<string, string> = {
   youtube_url: "YouTube",
   linkedin_url: "LinkedIn",
   whatsapp_url: "WhatsApp",
+  tiktok_url: "TikTok",
 };
 
 export function SocialLinks() {

@@ -15,6 +15,7 @@ export interface Profile {
   role: UserRole;
   status: UserStatus;
   avatar_url?: string;
+  bio?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -91,6 +92,11 @@ export interface Material {
   file_url: string;
   file_type?: string;
   file_size?: number;
+  storage_provider?: 'EXTERNAL' | 'R2';
+  object_key?: string;
+  access_level?: 'FREE' | 'PREMIUM';
+  mime_type?: string;
+  original_name?: string;
   uploaded_by: string;
   created_at?: string;
 }

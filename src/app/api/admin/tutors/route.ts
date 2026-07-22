@@ -7,6 +7,7 @@ const tutorSchema = z.object({
   name: z.string().trim().min(3).max(120),
   email: z.string().trim().email(),
   speciality: z.string().trim().min(2).max(120),
+  bio: z.string().trim().max(2000).default(""),
   avatar_url: z.string().trim().url().or(z.literal("")),
   is_active: z.boolean(),
   password: z.string().min(8).optional(),
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
     email: payload.email,
     role: "EXPLICADOR",
     university: payload.speciality,
+    bio: payload.bio || null,
     avatar_url: payload.avatar_url || null,
     status: payload.is_active ? "active" : "inactive",
   }, { onConflict: "user_id" });
@@ -69,6 +71,7 @@ export async function PATCH(request: Request) {
     full_name: payload.name,
     email: payload.email,
     university: payload.speciality,
+    bio: payload.bio || null,
     avatar_url: payload.avatar_url || null,
     status: payload.is_active ? "active" : "inactive",
   }).eq("id", payload.id).in("role", ["EXPLICADOR", "ADMIN"]);

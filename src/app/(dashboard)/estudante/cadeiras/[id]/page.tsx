@@ -2,16 +2,24 @@
 
 import React, { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { getCourseDescription } from "@/lib/course-descriptions";
 
 interface PageProps {
   params: Promise<{ id: string }>;
+}
+
+interface TutorProfile {
+  id: string;
+  full_name: string;
+  university: string | null;
+  bio: string | null;
+  avatar_url: string | null;
 }
 
 export default function CourseDetail({ params }: PageProps) {
@@ -24,7 +32,7 @@ export default function CourseDetail({ params }: PageProps) {
   const [loading, setLoading] = useState(true);
 
   const [course, setCourse] = useState<any>(null);
-  const [tutor, setTutor] = useState<any>(null);
+  const [tutors, setTutors] = useState<TutorProfile[]>([]);
   const [lessons, setLessons] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
   const [isEnrolledAndPaid, setIsEnrolledAndPaid] = useState(false);
@@ -46,23 +54,11 @@ export default function CourseDetail({ params }: PageProps) {
       if (courseData) {
         setCourse(courseData);
         
-        // 2. Fetch Tutor (through course_tutors)
-        const { data: ctData } = await supabase
-          .from('course_tutors')
-          .select('tutor_id')
-          .eq('course_id', id)
-          .eq('is_active', true)
-          .limit(1)
-          .maybeSingle();
-          
-        if (ctData?.tutor_id) {
-          const { data: tutorData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', ctData.tutor_id)
-            .single();
-          if (tutorData) setTutor(tutorData);
-        }
+        // 2. Fetch every active tutor through the restricted public-profile RPC.
+        const { data: tutorData, error: tutorError } = await supabase
+          .rpc('get_course_tutors', { p_course_id: id });
+        if (tutorError) throw tutorError;
+        setTutors((tutorData as TutorProfile[] | null) ?? []);
         
         // 3. Fetch Lessons
         const { data: lessonsData } = await supabase
@@ -75,9 +71,7 @@ export default function CourseDetail({ params }: PageProps) {
         
         // 4. Fetch Materials
         const { data: materialsData } = await supabase
-          .from('materials')
-          .select('*')
-          .eq('course_id', id);
+          .rpc('get_course_materials', { p_course_id: id });
         if (materialsData) setMaterials(materialsData);
         
         // 5. Check Enrollment if user is logged in
@@ -130,6 +124,9 @@ export default function CourseDetail({ params }: PageProps) {
           <h2 className="font-playfair text-3xl md:text-4xl font-bold text-on-surface uppercase leading-tight">
             {course.name}
           </h2>
+          <p className="max-w-2xl text-sm leading-relaxed text-on-surface-variant/90">
+            {getCourseDescription(course.name, course.description)}
+          </p>
           <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-on-surface-variant">
             <span className="flex items-center gap-1">
               <span className="material-symbols-outlined text-sm">payments</span> {course.price_monthly} MT/mês
@@ -142,11 +139,11 @@ export default function CourseDetail({ params }: PageProps) {
                 </span>
               </>
             )}
-            {tutor && (
+            {tutors.length > 0 && (
               <>
                 <span>•</span>
                 <span className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm">group</span> {tutor.full_name}
+                  <span className="material-symbols-outlined text-sm">group</span> {tutors.map((tutor) => tutor.full_name).join(", ")}
                 </span>
               </>
             )}
@@ -162,7 +159,7 @@ export default function CourseDetail({ params }: PageProps) {
             <TabsList className="w-full justify-start overflow-x-auto">
               <TabsTrigger value="aulas">Aulas ({lessons.length})</TabsTrigger>
               <TabsTrigger value="materiais">Materiais ({materials.length})</TabsTrigger>
-              <TabsTrigger value="explicadores">Explicador</TabsTrigger>
+              <TabsTrigger value="explicadores">Explicadores ({tutors.length})</TabsTrigger>
               <TabsTrigger value="avaliacoes">Avaliações</TabsTrigger>
             </TabsList>
 
@@ -243,12 +240,16 @@ export default function CourseDetail({ params }: PageProps) {
                           {mat.title}
                         </span>
                         <span className="text-[9px] text-on-surface-variant font-bold block mt-0.5">
-                          {mat.file_size ? (mat.file_size / 1024 / 1024).toFixed(2) + ' MB' : 'Desconhecido'} • {mat.file_type?.toUpperCase() || 'PDF'}
+                          {mat.file_size ? (mat.file_size / 1024 / 1024).toFixed(2) + ' MB' : 'Desconhecido'} • {mat.file_type?.toUpperCase() || 'PDF'} • {mat.access_level === "PREMIUM" ? "PREMIUM" : "GRATUITO"}
                         </span>
                       </div>
-                      <a href={mat.file_url} target="_blank" rel="noreferrer" className="text-primary hover:text-[#FF48FF] cursor-pointer">
-                        <span className="material-symbols-outlined text-lg">download</span>
-                      </a>
+                      {mat.access_level === "PREMIUM" && !isEnrolledAndPaid ? (
+                        <span className="material-symbols-outlined text-lg text-on-surface-variant" title="Disponível após pagamento">lock</span>
+                      ) : (
+                        <a href={`/api/materials/${mat.id}`} target="_blank" rel="noreferrer" className="text-primary hover:text-[#FF48FF] cursor-pointer" title="Abrir material">
+                          <span className="material-symbols-outlined text-lg">download</span>
+                        </a>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -256,10 +257,9 @@ export default function CourseDetail({ params }: PageProps) {
             </TabsContent>
 
             {/* Explicador Tab */}
-            <TabsContent value="explicadores" className="mt-6">
-              <Card className="p-6 flex flex-col sm:flex-row gap-6 items-start">
-                {tutor ? (
-                  <>
+            <TabsContent value="explicadores" className="mt-6 space-y-4">
+              {tutors.length > 0 ? tutors.map((tutor) => (
+                <Card key={tutor.id} className="p-6 flex flex-col sm:flex-row gap-6 items-start">
                     <div className="w-20 h-20 rounded-full overflow-hidden border border-primary/20 shrink-0 mx-auto sm:mx-0 bg-surface-container-low flex items-center justify-center">
                       {tutor.avatar_url ? (
                         <img className="w-full h-full object-cover" src={tutor.avatar_url} alt={tutor.full_name} />
@@ -271,22 +271,21 @@ export default function CourseDetail({ params }: PageProps) {
                       <div>
                         <h4 className="font-playfair text-xl font-bold text-on-surface">{tutor.full_name}</h4>
                         <p className="text-primary text-xs font-bold uppercase tracking-widest mt-0.5">
-                          {tutor.course || 'Explicador'} • {tutor.university || 'Kingsman'}
+                          Explicador • {tutor.university || 'Kingsman Academy'}
                         </p>
                       </div>
                       <p className="text-sm text-on-surface-variant/90 leading-relaxed">
-                        Explicador certificado da Kingsman Academy.
+                        {tutor.bio || 'Perfil profissional em atualização.'}
                       </p>
                       <div className="flex justify-center sm:justify-start gap-6 text-xs text-[#808080] font-semibold pt-2">
                         <span>👤 Explicador Oficial</span>
                         <span>📚 {course.department || 'Geral'}</span>
                       </div>
                     </div>
-                  </>
-                ) : (
-                  <p className="text-sm text-on-surface-variant">Explicador não definido.</p>
-                )}
-              </Card>
+                </Card>
+              )) : (
+                <Card className="p-6 text-sm text-on-surface-variant">Explicador não definido.</Card>
+              )}
             </TabsContent>
 
             {/* Avaliacoes Tab */}

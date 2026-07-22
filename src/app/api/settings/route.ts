@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/supabase/admin";
 
-const fields = "platform_name,contact_email,contact_phone,logo_url,mpesa_number,emola_number,bank_details,payment_review_hours,facebook_url,instagram_url,youtube_url,linkedin_url,whatsapp_url";
+const fields = "platform_name,contact_email,contact_phone,logo_url,mpesa_number,emola_number,bank_details,payment_review_hours,facebook_url,instagram_url,youtube_url,tiktok_url,linkedin_url,whatsapp_url";
 const optionalUrl = z.string().trim().url().or(z.literal(""));
 const settingsSchema = z.object({
   platform_name: z.string().trim().min(2).max(80),
@@ -19,6 +19,7 @@ const settingsSchema = z.object({
   youtube_url: optionalUrl,
   linkedin_url: optionalUrl,
   whatsapp_url: optionalUrl,
+  tiktok_url: optionalUrl,
 });
 
 export async function GET() {

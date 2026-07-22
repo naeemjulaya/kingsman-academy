@@ -67,7 +67,7 @@ export const mockCourses: Course[] = [
     id: "c1",
     name: "Bioestatística",
     department: "Ciências Médicas",
-    price_monthly: 750,
+    price_monthly: 650,
     price_per_lesson: 150,
     description: "Domine análise de dados, inferência estatística e probabilidade com foco em saúde.",
     max_tutors: 2,
@@ -77,7 +77,7 @@ export const mockCourses: Course[] = [
     id: "c2",
     name: "Química Orgânica",
     department: "Engenharia",
-    price_monthly: 750,
+    price_monthly: 650,
     price_per_lesson: 150,
     description: "Mecanismos de reação, síntese orgânica e hidrocarbonetos explicados de forma simples.",
     max_tutors: 1,
@@ -87,7 +87,7 @@ export const mockCourses: Course[] = [
     id: "c3",
     name: "Fisiologia Animal",
     department: "Biologia",
-    price_monthly: 750,
+    price_monthly: 650,
     price_per_lesson: 150,
     description: "Funcionamento sistémico dos organismos vivos em detalhe, com foco integrativo.",
     max_tutors: 1,
@@ -97,7 +97,7 @@ export const mockCourses: Course[] = [
     id: "c4",
     name: "Bioquímica Vegetal",
     department: "Agronomia",
-    price_monthly: 750,
+    price_monthly: 650,
     price_per_lesson: 150,
     description: "Metabolismo, fotossíntese e processos vitais no reino das plantas.",
     max_tutors: 1,
@@ -107,7 +107,7 @@ export const mockCourses: Course[] = [
     id: "c5",
     name: "Análise Matemática II",
     department: "Engenharia",
-    price_monthly: 750,
+    price_monthly: 650,
     price_per_lesson: 150,
     description: "Cálculo integral, equações diferenciais e séries com abordagem prática e direta.",
     max_tutors: 1,
@@ -117,7 +117,7 @@ export const mockCourses: Course[] = [
     id: "c6",
     name: "Física II",
     department: "Engenharia",
-    price_monthly: 750,
+    price_monthly: 650,
     price_per_lesson: 150,
     description: "Termodinâmica, oscilações, ondas e introdução ao eletromagnetismo.",
     max_tutors: 1,
@@ -138,13 +138,13 @@ export const mockStudentData = {
   name: "Keven Gulele",
   id: "s101",
   enrolledCourses: [
-    { id: "c1", name: "Bioestatística", progress: 60, totalLessons: 12, completedLessons: 7, tutor: "Keven Gulele", nextLesson: "Aula 8: Regressão Linear", price: 750 },
-    { id: "c2", name: "Química Orgânica", progress: 30, totalLessons: 10, completedLessons: 3, tutor: "Nilzam Bakali", nextLesson: "Aula 4: Reacções de Substituição", price: 750 }
+    { id: "c1", name: "Bioestatística", progress: 60, totalLessons: 12, completedLessons: 7, tutor: "Keven Gulele", nextLesson: "Aula 8: Regressão Linear", price: 650 },
+    { id: "c2", name: "Química Orgânica", progress: 30, totalLessons: 10, completedLessons: 3, tutor: "Nilzam Bakali", nextLesson: "Aula 4: Reacções de Substituição", price: 650 }
   ],
   stats: {
     enrolledCourses: 2,
     watchedLessons: 10,
-    nextPayment: { amount: 750, date: "20/06/2026" }
+    nextPayment: { amount: 650, date: "20/06/2026" }
   },
   recentActivity: [
     { type: "lesson_completed", message: "Aula concluída — Bioestatística Aula 7: Correlação", date: "Hoje, 10:45 AM" },

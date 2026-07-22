@@ -30,6 +30,7 @@ interface Cadeira {
   lessons_count?: number;
   tutor_names?: string[];
   tutor_ids?: string[];
+  whatsapp_links?: Record<string, string>;
 }
 
 export default function CadeirasPage() {
@@ -47,12 +48,13 @@ export default function CadeirasPage() {
     department: "",
     university: "UEM",
     description: "",
-    price_monthly: 750,
+    price_monthly: 650,
     price_per_lesson: 150,
     max_tutors: 2,
     youtube_playlist_id: "",
     is_active: true,
-    tutor_ids: []
+    tutor_ids: [],
+    whatsapp_links: {},
   });
 
   // Modal de Eliminação
@@ -73,6 +75,8 @@ export default function CadeirasPage() {
         .order("name", { ascending: true });
       if (coursesError) throw coursesError;
 
+      const { data: resourceData, error: resourceError } = await supabase.rpc("get_tutor_resource_links");
+      if (resourceError) throw resourceError;
       // 2. Fetch Tutors
       const { data: tutorsData, error: tutorsError } = await supabase
         .from("profiles")
@@ -103,7 +107,12 @@ export default function CadeirasPage() {
 
           const activeTutors = (tutorRel || []).map((relation) => {
             const profile = Array.isArray(relation.profiles) ? relation.profiles[0] : relation.profiles;
-            return { id: relation.tutor_id, name: profile?.full_name || "Explicador sem nome" };
+            const resource = (resourceData ?? []).find((entry: any) => entry.course_id === c.id && entry.tutor_id === relation.tutor_id);
+            return {
+              id: relation.tutor_id,
+              name: profile?.full_name || "Explicador sem nome",
+              whatsappUrl: resource?.whatsapp_group_url || "",
+            };
           });
 
           return {
@@ -111,6 +120,7 @@ export default function CadeirasPage() {
             lessons_count: lessonsCount || 0,
             tutor_names: activeTutors.map((tutor) => tutor.name),
             tutor_ids: activeTutors.map((tutor) => tutor.id),
+            whatsapp_links: Object.fromEntries(activeTutors.map((tutor) => [tutor.id, tutor.whatsappUrl])),
           };
         })
       );
@@ -129,12 +139,13 @@ export default function CadeirasPage() {
       department: "",
       university: "UEM",
       description: "",
-      price_monthly: 750,
+      price_monthly: 650,
       price_per_lesson: 150,
       max_tutors: 2,
       youtube_playlist_id: "",
       is_active: true,
-      tutor_ids: []
+      tutor_ids: [],
+      whatsapp_links: {},
     });
     setIsEdit(false);
     setIsOpen(true);
@@ -149,13 +160,13 @@ export default function CadeirasPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { error } = await supabase.rpc("admin_save_course_v2", {
+      const { data: savedCourseId, error } = await supabase.rpc("admin_save_course_v2", {
         p_id: isEdit ? selectedCadeira.id : null,
         p_name: selectedCadeira.name?.trim(),
         p_department: selectedCadeira.department?.trim() ?? "",
         p_university: selectedCadeira.university?.trim() || "UEM",
         p_description: selectedCadeira.description ?? "",
-        p_price_monthly: Number(selectedCadeira.price_monthly ?? 750),
+        p_price_monthly: Number(selectedCadeira.price_monthly ?? 650),
         p_price_per_lesson: Number(selectedCadeira.price_per_lesson ?? 150),
         p_max_tutors: Math.max(Number(selectedCadeira.max_tutors ?? 1), selectedCadeira.tutor_ids?.length ?? 0),
         p_youtube_playlist_id: selectedCadeira.youtube_playlist_id ?? "",
@@ -163,6 +174,17 @@ export default function CadeirasPage() {
         p_tutor_ids: selectedCadeira.tutor_ids ?? [],
       });
       if (error) throw error;
+
+      const courseId = savedCourseId as string;
+      const whatsappResults = await Promise.all((selectedCadeira.tutor_ids ?? []).map((tutorId) =>
+        supabase.rpc("save_course_whatsapp_link", {
+          p_course_id: courseId,
+          p_tutor_id: tutorId,
+          p_whatsapp_group_url: selectedCadeira.whatsapp_links?.[tutorId]?.trim() ?? "",
+        })
+      ));
+      const whatsappError = whatsappResults.find((result) => result.error)?.error;
+      if (whatsappError) throw whatsappError;
 
       setIsOpen(false);
       fetchData();
@@ -235,6 +257,7 @@ export default function CadeirasPage() {
                   <TableRow>
                     <TableHead>Nome da Cadeira</TableHead>
                     <TableHead>Departamento</TableHead>
+                    <TableHead>Preço Mensal</TableHead>
                     <TableHead>Nº Aulas</TableHead>
                     <TableHead>Explicador Responsável</TableHead>
                     <TableHead>Estado</TableHead>
@@ -249,6 +272,7 @@ export default function CadeirasPage() {
                         {c.name}
                       </TableCell>
                       <TableCell>{c.department}</TableCell>
+                      <TableCell className="font-medium">{c.price_monthly} MT</TableCell>
                       <TableCell className="font-medium text-primary">{c.lessons_count} aulas</TableCell>
                       <TableCell className="font-medium text-on-surface">
                         {c.tutor_names?.length ? c.tutor_names.join(", ") : "Sem Explicador"}
@@ -360,6 +384,29 @@ export default function CadeirasPage() {
                 </div>
                 <p className="text-[10px] text-on-surface-variant">Pode selecionar mais de um explicador para a mesma cadeira.</p>
               </div>
+
+              {(selectedCadeira.tutor_ids ?? []).length > 0 && (
+                <div className="space-y-3">
+                  <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Grupos de WhatsApp por Explicador</label>
+                  {(selectedCadeira.tutor_ids ?? []).map((tutorId) => {
+                    const tutor = tutors.find((option) => option.id === tutorId);
+                    return (
+                      <div key={tutorId} className="space-y-1 rounded-lg bg-surface-container p-3">
+                        <span className="text-xs font-semibold text-on-surface">{tutor?.full_name || "Explicador"}</span>
+                        <Input
+                          type="url"
+                          placeholder="https://chat.whatsapp.com/..."
+                          value={selectedCadeira.whatsapp_links?.[tutorId] ?? ""}
+                          onChange={(e) => setSelectedCadeira((current) => ({
+                            ...current,
+                            whatsapp_links: { ...current.whatsapp_links, [tutorId]: e.target.value },
+                          }))}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Estado de Atividade</label>

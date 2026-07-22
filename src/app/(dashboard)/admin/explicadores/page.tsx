@@ -98,7 +98,7 @@ export default function ExplicadoresPage() {
             courses_count: coursesCount || 0,
             videos_count: videosCount,
             avatar_url: t.avatar_url || "",
-            bio: t.phone || "", // Storing phone in bio placeholder if nothing else, or keeping static bio
+            bio: t.bio || "",
             is_active: t.status === "active",
             account_role: t.role,
           };
@@ -350,9 +350,23 @@ export default function ExplicadoresPage() {
               </div>
 
               <div className="space-y-1.5">
+                <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Biografia Profissional</label>
+                <textarea
+                  rows={6}
+                  maxLength={2000}
+                  placeholder="Apresente a formação, experiência, áreas de ensino e metodologia do explicador..."
+                  value={selectedExplicador.bio ?? ""}
+                  onChange={(e) => setSelectedExplicador({ ...selectedExplicador, bio: e.target.value })}
+                  className="w-full resize-y rounded-lg border border-border/20 bg-surface-container px-3 py-2 text-sm text-on-surface outline-none transition-colors placeholder:text-on-surface-variant/50 focus:border-primary/60"
+                />
+                <p className="text-[10px] text-on-surface-variant">Esta descrição será apresentada aos estudantes antes da inscrição.</p>
+              </div>
+
+              <div className="space-y-1.5">
                 <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Foto de Perfil (URL)</label>
                 <Input
-                  placeholder="Link para a imagem..."
+                  type="url"
+                  placeholder="https://res.cloudinary.com/..."
                   value={selectedExplicador.avatar_url}
                   onChange={(e) => setSelectedExplicador({ ...selectedExplicador, avatar_url: e.target.value })}
                 />

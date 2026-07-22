@@ -24,7 +24,6 @@ interface LessonData {
 interface Material {
   id: string;
   title: string;
-  file_url: string;
   file_type: string;
   file_size: number | null;
 }
@@ -130,12 +129,9 @@ export default function LessonPlayerPage() {
 
       // 5. Busca materiais
       const { data: materialsData } = await supabase
-        .from("materials")
-        .select("id, title, file_url, file_type, file_size")
-        .eq("lesson_id", lessonId)
-        .eq("course_id", lessonData.course_id);
+        .rpc("get_course_materials", { p_course_id: lessonData.course_id });
 
-      setMaterials(materialsData || []);
+      setMaterials(((materialsData || []) as Array<Material & { lesson_id: string | null }>).filter((material) => material.lesson_id === lessonId));
 
       // 6. Busca aulas adjacentes (anterior e próxima)
       const { data: adjacent } = await supabase
@@ -199,23 +195,6 @@ export default function LessonPlayerPage() {
       }
     } catch (error) {
       console.error("Erro ao registrar progresso:", error);
-    }
-  }
-
-  async function downloadMaterial(fileUrl: string, title: string) {
-    try {
-      const response = await fetch(fileUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = title;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error("Erro ao download:", error);
     }
   }
 
@@ -362,7 +341,7 @@ export default function LessonPlayerPage() {
                 <Card
                   key={material.id}
                   className="bg-[rgba(26,10,26,0.5)] border-[rgba(255,72,255,0.08)] p-4 hover:border-[rgba(255,72,255,0.2)] transition-all cursor-pointer"
-                  onClick={() => downloadMaterial(material.file_url, material.title)}
+                  onClick={() => window.open(`/api/materials/${material.id}`, "_blank", "noopener,noreferrer")}
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[rgba(255,45,85,0.1)]">

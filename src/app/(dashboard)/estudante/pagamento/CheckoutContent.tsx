@@ -31,10 +31,11 @@ export default function CheckoutContent() {
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(2);
     const [transactionId, setTransactionId] = useState<string>("");
+    const [copiedField, setCopiedField] = useState<string | null>(null);
     const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>({
-        mpesa_number: "",
-        emola_number: "",
-        bank_details: "",
+        mpesa_number: "849418723",
+        emola_number: "863312201",
+        bank_details: "BIM (NIB)\n000100000103813561457",
         payment_review_hours: 24,
     });
 
@@ -72,6 +73,21 @@ export default function CheckoutContent() {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
         if (selectedFile) {
+            const allowedTypes = ["image/jpeg", "image/png", "application/pdf"];
+            if (!allowedTypes.includes(selectedFile.type)) {
+                alert("Envie o comprovativo em PDF, JPG ou PNG.");
+                e.target.value = "";
+                setFile(null);
+                setFilePreview(null);
+                return;
+            }
+            if (selectedFile.size > 5 * 1024 * 1024) {
+                alert("O comprovativo não pode ultrapassar 5 MB.");
+                e.target.value = "";
+                setFile(null);
+                setFilePreview(null);
+                return;
+            }
             setFile(selectedFile);
             if (selectedFile.type.startsWith("image/")) {
                 const reader = new FileReader();
@@ -85,25 +101,31 @@ export default function CheckoutContent() {
         }
     };
 
+    const copyPaymentValue = async (value: string, field: string) => {
+        try {
+            await navigator.clipboard.writeText(value);
+            setCopiedField(field);
+            window.setTimeout(() => setCopiedField((current) => current === field ? null : current), 2000);
+        } catch {
+            alert("Não foi possível copiar automaticamente. Selecione e copie o número manualmente.");
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!file || !user || !course) return;
 
         setLoading(true);
         try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}_proof.${fileExt}`;
-            const filePath = `${user.id}/${fileName}`;
-
-            const { error: uploadError } = await supabase.storage
-                .from('payment-proofs')
-                .upload(filePath, file);
-
-            if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('payment-proofs')
-                .getPublicUrl(filePath);
+            const proofForm = new FormData();
+            proofForm.append("file", file);
+            const proofResponse = await fetch("/api/payments/proof", {
+                method: "POST",
+                body: proofForm,
+            });
+            const proofResult = await proofResponse.json();
+            if (!proofResponse.ok) throw new Error(proofResult.error || "Falha ao enviar o comprovativo");
+            const filePath = proofResult.path as string;
 
             const { data: paymentData, error: paymentError } = await supabase
                 .from('payments')
@@ -113,7 +135,7 @@ export default function CheckoutContent() {
                     amount: course.price_monthly,
                     method: method,
                     status: 'PENDING',
-                    proof_url: publicUrl
+                    proof_url: filePath
                 })
                 .select('id')
                 .single();
@@ -290,15 +312,22 @@ export default function CheckoutContent() {
                                 <ol className="space-y-3 text-sm text-on-surface-variant font-medium">
                                     <li className="flex gap-3">
                                         <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">1</span>
-                                        <p>Marque <span className="text-amber-200 font-mono">*150#</span> no seu telemóvel.</p>
+                                        <p>Abra o menu M-Pesa no seu telemóvel.</p>
                                     </li>
                                     <li className="flex gap-3">
                                         <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">2</span>
-                                        <p>Selecione <span className="text-amber-200 font-mono">6) Pagamentos</span> e depois <span className="text-amber-200 font-mono">Pagar Facturas</span>.</p>
+                                        <p>Selecione a opção para transferir dinheiro.</p>
                                     </li>
                                     <li className="flex gap-3">
                                         <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">3</span>
-                                        <p>Envie para o número ou código: <span className="text-amber-200 font-mono">{paymentSettings.mpesa_number || "Não configurado"}</span>.</p>
+                                        <div className="flex-1">
+                                            <p className="mb-2">Envie para o número M-Pesa:</p>
+                                            <CopyablePaymentValue
+                                                value={paymentSettings.mpesa_number || "Não configurado"}
+                                                copied={copiedField === "mpesa"}
+                                                onCopy={() => copyPaymentValue(paymentSettings.mpesa_number, "mpesa")}
+                                            />
+                                        </div>
                                     </li>
                                     <li className="flex gap-3">
                                         <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">4</span>
@@ -311,15 +340,22 @@ export default function CheckoutContent() {
                                 <ol className="space-y-3 text-sm text-on-surface-variant font-medium">
                                     <li className="flex gap-3">
                                         <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">1</span>
-                                        <p>Marque <span className="text-amber-200 font-mono">*155#</span> no seu telemóvel Movitel.</p>
+                                        <p>Abra o menu e-Mola no seu telemóvel Movitel.</p>
                                     </li>
                                     <li className="flex gap-3">
                                         <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">2</span>
-                                        <p>Selecione <span className="text-amber-200 font-mono">4) Pagamentos</span>.</p>
+                                        <p>Selecione a opção para transferir dinheiro.</p>
                                     </li>
                                     <li className="flex gap-3">
                                         <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">3</span>
-                                        <p>Envie para o número ou código: <span className="text-amber-200 font-mono">{paymentSettings.emola_number || "Não configurado"}</span>.</p>
+                                        <div className="flex-1">
+                                            <p className="mb-2">Envie para a conta e-Mola de <strong className="text-amber-200">Keven Gulele</strong>:</p>
+                                            <CopyablePaymentValue
+                                                value={paymentSettings.emola_number || "Não configurado"}
+                                                copied={copiedField === "emola"}
+                                                onCopy={() => copyPaymentValue(paymentSettings.emola_number, "emola")}
+                                            />
+                                        </div>
                                     </li>
                                     <li className="flex gap-3">
                                         <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">4</span>
@@ -331,8 +367,16 @@ export default function CheckoutContent() {
                             {method === "TRANSFERENCIA" && (
                                 <div className="space-y-4 text-sm text-on-surface-variant font-medium">
                                     <p>Efectue a transferência bancária para a nossa conta institucional e anexe o comprovativo:</p>
-                                    <div className="bg-[#0A0A0A]/40 p-4 rounded-lg border border-amber-500/10 whitespace-pre-wrap font-mono text-xs text-amber-200">
-                                        {paymentSettings.bank_details || "Dados bancários ainda não configurados pelo administrador."}
+                                    <div className="bg-[#0A0A0A]/40 p-4 rounded-lg border border-amber-500/10 space-y-3">
+                                        <p className="text-xs font-bold uppercase tracking-wider text-amber-400">BIM — NIB</p>
+                                        <CopyablePaymentValue
+                                            value="000100000103813561457"
+                                            copied={copiedField === "nib"}
+                                            onCopy={() => copyPaymentValue("000100000103813561457", "nib")}
+                                        />
+                                        {paymentSettings.bank_details && !paymentSettings.bank_details.includes("000100000103813561457") && (
+                                            <p className="whitespace-pre-wrap text-xs text-amber-200">{paymentSettings.bank_details}</p>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -349,7 +393,7 @@ export default function CheckoutContent() {
                                     <p className="text-xs text-on-surface-variant/70 text-center mt-2 font-semibold">
                                         Suporta PDF, JPG ou PNG (Máx 5MB)
                                     </p>
-                                    <input type="file" className="hidden" accept="image/*,application/pdf" onChange={handleFileChange} />
+                                    <input type="file" className="hidden" accept="image/jpeg,image/png,application/pdf" onChange={handleFileChange} />
                                 </label>
                             </div>
 
@@ -450,6 +494,34 @@ export default function CheckoutContent() {
                     </div>
                 </Card>
             )}
+        </div>
+    );
+}
+
+function CopyablePaymentValue({
+    value,
+    copied,
+    onCopy,
+}: {
+    value: string;
+    copied: boolean;
+    onCopy: () => void;
+}) {
+    const canCopy = value !== "Não configurado";
+
+    return (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/20 bg-black/20 px-3 py-2.5">
+            <span className="break-all font-mono text-sm font-bold tracking-wide text-amber-200">{value}</span>
+            <button
+                type="button"
+                onClick={onCopy}
+                disabled={!canCopy}
+                className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-300 transition-colors hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label={`Copiar ${value}`}
+            >
+                <span className="material-symbols-outlined text-base">{copied ? "check" : "content_copy"}</span>
+                {copied ? "Copiado" : "Copiar"}
+            </button>
         </div>
     );
 }

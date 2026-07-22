@@ -18,6 +18,7 @@ interface Pagamento {
   amount: number;
   date: string;
   method: string;
+  proof_url: string;
   status: "PENDING" | "CONFIRMED" | "REJECTED";
 }
 
@@ -41,6 +42,7 @@ export default function PagamentosPage() {
           id,
           amount,
           method,
+          proof_url,
           status,
           created_at,
           profiles:student_id(full_name, email),
@@ -62,6 +64,7 @@ export default function PagamentosPage() {
           amount: p.amount,
           date: p.created_at || "",
           method: p.method || "M-Pesa",
+          proof_url: p.proof_url || "",
           status: p.status as "PENDING" | "CONFIRMED" | "REJECTED"
         };
       });
@@ -206,6 +209,7 @@ export default function PagamentosPage() {
                     <TableHead>Valor</TableHead>
                     <TableHead>Data de Pagamento</TableHead>
                     <TableHead>Método</TableHead>
+                    <TableHead>Comprovativo</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Ações de Validação</TableHead>
                   </TableRow>
@@ -224,6 +228,21 @@ export default function PagamentosPage() {
                       <TableCell>{p.date ? new Date(p.date).toLocaleDateString("pt-PT") : "N/D"}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{p.method}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {p.proof_url ? (
+                          <a
+                            href={`/api/admin/payments/${p.id}/proof`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary transition-colors hover:bg-primary/20"
+                          >
+                            <span className="material-symbols-outlined text-base">receipt_long</span>
+                            Ver comprovativo
+                          </a>
+                        ) : (
+                          <span className="text-xs text-[#808080]">Não enviado</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge

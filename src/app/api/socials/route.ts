@@ -8,16 +8,17 @@ const socialSchema = z.object({
   youtube_url: z.string().url().or(z.literal("")),
   linkedin_url: z.string().url().or(z.literal("")),
   whatsapp_url: z.string().url().or(z.literal("")),
+  tiktok_url: z.string().url().or(z.literal("")),
 });
 
 export async function GET() {
   try {
     const admin = createAdminClient();
-    const { data, error } = await admin.from("platform_settings").select("facebook_url,instagram_url,youtube_url,linkedin_url,whatsapp_url").eq("id", true).single();
+    const { data, error } = await admin.from("platform_settings").select("facebook_url,instagram_url,youtube_url,tiktok_url,linkedin_url,whatsapp_url").eq("id", true).single();
     if (error) throw error;
     return NextResponse.json(data, { headers: { "Cache-Control": "public, max-age=300" } });
   } catch {
-    return NextResponse.json({ facebook_url: "", instagram_url: "", youtube_url: "", linkedin_url: "", whatsapp_url: "" });
+    return NextResponse.json({ facebook_url: "", instagram_url: "", youtube_url: "", tiktok_url: "", linkedin_url: "", whatsapp_url: "" });
   }
 }
 

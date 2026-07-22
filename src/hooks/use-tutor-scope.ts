@@ -24,6 +24,7 @@ export function useTutorScope() {
   useEffect(() => {
     if (!user) return;
     const userId = user.id;
+    const userRole = user.role;
     const supabase = createClient();
 
     async function load() {
@@ -41,6 +42,17 @@ export function useTutorScope() {
       }
 
       setProfileId(profile.id);
+      if (userRole === "ADMIN") {
+        const { data: allCourses, error: allCoursesError } = await supabase
+          .from("courses")
+          .select("id,name,department,university,description,price_monthly,is_active")
+          .order("name");
+        if (allCoursesError) setError(allCoursesError.message);
+        else setCourses((allCourses || []) as TutorCourse[]);
+        setLoading(false);
+        return;
+      }
+
       const { data, error: coursesError } = await supabase
         .from("course_tutors")
         .select("course:courses(id,name,department,university,description,price_monthly,is_active)")

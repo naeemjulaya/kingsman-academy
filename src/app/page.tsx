@@ -273,7 +273,7 @@ export default function LandingPage() {
                 <div>
                   <h3 className="font-playfair text-xl text-on-surface font-bold mb-4">Mensal DCB</h3>
                   <div className="mb-8">
-                    <span className="text-3xl font-bold text-primary">750 MT</span>
+                    <span className="text-3xl font-bold text-primary">650 MT</span>
                     <span className="text-on-surface-variant text-sm">/mês</span>
                   </div>
                   <ul className="space-y-4 mb-8 text-sm text-on-surface-variant">

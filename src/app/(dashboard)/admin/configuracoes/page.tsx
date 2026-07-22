@@ -21,6 +21,7 @@ interface Settings {
   youtube_url: string;
   linkedin_url: string;
   whatsapp_url: string;
+  tiktok_url: string;
 }
 
 const defaults: Settings = {
@@ -28,15 +29,16 @@ const defaults: Settings = {
   contact_email: "suporte@kingsman.academy",
   contact_phone: "",
   logo_url: "",
-  mpesa_number: "",
-  emola_number: "",
-  bank_details: "",
+  mpesa_number: "849418723",
+  emola_number: "863312201",
+  bank_details: "BIM (NIB)\n000100000103813561457",
   payment_review_hours: 24,
   facebook_url: "",
   instagram_url: "",
   youtube_url: "",
   linkedin_url: "",
   whatsapp_url: "",
+  tiktok_url: "",
 };
 
 export default function ConfiguracoesPage() {
@@ -162,7 +164,7 @@ export default function ConfiguracoesPage() {
                     <p className="text-xs text-on-surface-variant mt-1">Apenas links preenchidos serão exibidos no rodapé público.</p>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
-                    {Object.entries({ facebook_url: "Facebook", instagram_url: "Instagram", youtube_url: "YouTube", linkedin_url: "LinkedIn", whatsapp_url: "WhatsApp" }).map(([key, label]) => (
+                    {Object.entries({ facebook_url: "Facebook", instagram_url: "Instagram", youtube_url: "YouTube", tiktok_url: "TikTok", linkedin_url: "LinkedIn", whatsapp_url: "WhatsApp" }).map(([key, label]) => (
                       <Field label={label} key={key}>
                         <Input type="url" placeholder="https://..." value={settings[key as keyof Settings] as string} onChange={(e) => update(key as keyof Settings, e.target.value)} />
                       </Field>

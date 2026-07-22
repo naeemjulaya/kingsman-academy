@@ -39,6 +39,31 @@ As funções administrativas voltam a validar o perfil `ADMIN` na base de dados;
 
 O player usa links embed e a rota `/api/lessons/[id]/video`, que valida sessão, matrícula ativa e pagamento confirmado. A `YOUTUBE_API_KEY` é opcional e só será necessária caso se use a YouTube Data API v3 para metadados ou gestão do canal.
 
+## Materiais no Cloudflare R2
+
+PDFs, e-books e fichas são guardados num bucket R2 privado. A aplicação gera URLs temporários para upload e download; materiais `PREMIUM` só são autorizados após confirmar matrícula e pagamento.
+
+1. Crie um bucket privado chamado `kingsman-materials` no Cloudflare R2.
+2. Crie credenciais S3 com leitura e escrita nesse bucket.
+3. Configure `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` e `R2_BUCKET_NAME` no `.env.local` e na Vercel.
+4. Aplique a migração `202607220004_r2_material_storage.sql`.
+5. No bucket, configure CORS para o upload direto do browser, substituindo o domínio de produção:
+
+```json
+[
+  {
+    "AllowedOrigins": [
+      "http://localhost:3000",
+      "https://SEU-DOMINIO.vercel.app"
+    ],
+    "AllowedMethods": ["PUT"],
+    "AllowedHeaders": ["Content-Type"]
+  }
+]
+```
+
+Nunca exponha `R2_SECRET_ACCESS_KEY` com o prefixo `NEXT_PUBLIC_`. O limite atual da aplicação é 50 MB por ficheiro e os formatos permitidos são PDF, EPUB, DOCX, PPTX, XLSX e ZIP.
+
 ## Login e registo sem palavra-passe
 
 O fluxo principal usa `signInWithOtp` do Supabase. O utilizador informa o email e recebe um magic link que cria a conta ou inicia a sessão. A sessão é persistida em cookies pelo `@supabase/ssr` e recuperada com `getSession()` no cliente; as autorizações no servidor continuam a usar `getUser()`.
