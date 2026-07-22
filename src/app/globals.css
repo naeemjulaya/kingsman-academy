@@ -79,6 +79,174 @@ h1, h2, h3, h4, h5, h6 {
   animation: scanline 8s linear infinite;
 }
 
+/* Landing page motion: subtle depth without changing the visual identity. */
+.landing-page {
+  isolation: isolate;
+}
+
+.landing-orb {
+  position: absolute;
+  width: 38rem;
+  height: 38rem;
+  border-radius: 9999px;
+  filter: blur(110px);
+  opacity: 0.11;
+  background: #ff48ff;
+  animation: landing-orb-drift 18s ease-in-out infinite alternate;
+}
+
+.landing-orb-one {
+  top: -14rem;
+  left: -16rem;
+}
+
+.landing-orb-two {
+  right: -18rem;
+  top: 45%;
+  animation-delay: -8s;
+  animation-direction: alternate-reverse;
+}
+
+.landing-grid-glow {
+  opacity: 0.22;
+  background-image:
+    linear-gradient(rgba(255, 72, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 72, 255, 0.055) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(circle at center, black 0%, transparent 72%);
+  animation: landing-grid-breathe 7s ease-in-out infinite;
+}
+
+.landing-hero-enter {
+  animation: landing-hero-enter 850ms cubic-bezier(.2,.7,.2,1) both;
+}
+
+.landing-float-chip {
+  position: absolute;
+  z-index: 15;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(255, 72, 255, 0.18);
+  border-radius: 0.9rem;
+  background: rgba(26, 10, 26, 0.62);
+  color: #dabfd3;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(18px);
+  font-size: 0.75rem;
+  font-weight: 700;
+  animation: landing-float 5.5s ease-in-out infinite;
+}
+
+.landing-float-chip .material-symbols-outlined {
+  color: #ff48ff;
+  font-size: 1.1rem;
+}
+
+.landing-float-chip-left {
+  left: max(4vw, 2rem);
+  top: 34%;
+  transform: rotate(-3deg);
+}
+
+.landing-float-chip-right {
+  right: max(4vw, 2rem);
+  top: 61%;
+  transform: rotate(3deg);
+  animation-delay: -2.8s;
+}
+
+.landing-card {
+  position: relative;
+  overflow: hidden;
+  transform: translate3d(0, 0, 0);
+  transition: transform 350ms cubic-bezier(.2,.7,.2,1), border-color 350ms ease, box-shadow 350ms ease;
+}
+
+.landing-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(120deg, transparent 18%, rgba(255,255,255,0.045) 48%, transparent 72%);
+  transform: translateX(-120%);
+  transition: transform 700ms ease;
+}
+
+.landing-card:hover {
+  transform: translate3d(0, -7px, 0);
+  border-color: rgba(255, 72, 255, 0.32);
+  box-shadow: 0 24px 55px rgba(0, 0, 0, 0.34), 0 0 26px rgba(255, 72, 255, 0.08);
+}
+
+.landing-card:hover::before {
+  transform: translateX(120%);
+}
+
+.landing-card-glow {
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.24);
+}
+
+.landing-card-featured {
+  animation: landing-featured-float 6s ease-in-out infinite;
+}
+
+.landing-icon-float {
+  animation: landing-float 5s ease-in-out infinite;
+}
+
+.landing-reveal-ready {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 700ms ease, transform 700ms cubic-bezier(.2,.7,.2,1);
+}
+
+.landing-reveal-ready.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes landing-hero-enter {
+  from { opacity: 0; transform: translateY(18px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes landing-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -10px; }
+}
+
+@keyframes landing-featured-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -5px; }
+}
+
+@keyframes landing-orb-drift {
+  from { transform: translate3d(0, 0, 0) scale(0.95); }
+  to { transform: translate3d(5rem, 3rem, 0) scale(1.08); }
+}
+
+@keyframes landing-grid-breathe {
+  0%, 100% { opacity: 0.14; }
+  50% { opacity: 0.26; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-page *,
+  .landing-page *::before,
+  .landing-page *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .landing-reveal-ready {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @keyframes scanline {
   0% { bottom: 100%; }
   100% { bottom: -100px; }
