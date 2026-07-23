@@ -46,7 +46,7 @@ export async function hasPaidCourseAccess(identity: RequestIdentity, courseId: s
     .from("enrollments")
     .select("id,end_date")
     .eq("course_id", courseId)
-    .in("student_id", [...new Set([identity.userId, identity.profileId])])
+    .eq("student_id", identity.profileId)
     .eq("status", "ACTIVE")
     .eq("payment_status", "CONFIRMED")
     .maybeSingle();

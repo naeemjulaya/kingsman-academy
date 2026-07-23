@@ -27,6 +27,32 @@ interface UpcomingLesson {
   time_label: string;
 }
 
+interface StudentProgress {
+  lessonId: string;
+  courseId: string | null;
+  progressPercent: number;
+}
+
+interface EnrollmentCourse {
+  id: string;
+  name: string;
+  department: string | null;
+  price_monthly: number;
+}
+
+interface StudentEnrollment {
+  course_id: string;
+  end_date: string | null;
+  status: string;
+  payment_status: string;
+  courses: EnrollmentCourse | EnrollmentCourse[] | null;
+}
+
+interface DashboardNotification {
+  content: string;
+  created_at: string;
+}
+
 export default function StudentDashboard() {
   const { user } = useAuth();
   const supabase = createClient();
@@ -53,22 +79,16 @@ export default function StudentDashboard() {
       if (!user) return;
 
       // 1. Cadeiras Inscritas
-      const { data: enrollments } = await supabase
-        .from('enrollments')
-        .select(`
-          course_id,
-          end_date,
-          status,
-          payment_status,
-          courses:course_id (
-            id, name, department, price_monthly
-          )
-        `)
-        .eq('student_id', user.id)
-        .eq('status', 'ACTIVE')
-        .eq('payment_status', 'CONFIRMED');
+      const enrollmentResponse = await fetch("/api/student/enrollments", { cache: "no-store" });
+      const enrollmentResult = await enrollmentResponse.json();
+      if (!enrollmentResponse.ok) throw new Error(enrollmentResult.error || "Não foi possível carregar as inscrições");
+      const activeEnrollments = ((enrollmentResult.enrollments || []) as StudentEnrollment[]).filter(
+        (enrollment) => enrollment.status === "ACTIVE" && enrollment.payment_status === "CONFIRMED"
+      );
 
-      const activeEnrollments = enrollments || [];
+      const progressResponse = await fetch("/api/student/progress", { cache: "no-store" });
+      const progressResult = await progressResponse.json();
+      const studentProgress: StudentProgress[] = progressResponse.ok ? progressResult.progress || [] : [];
       
       // Calculate Next Payment
       let nextPaymentAmount = 0;
@@ -103,26 +123,13 @@ export default function StudentDashboard() {
           .select('id', { count: 'exact', head: true })
           .eq('course_id', cId);
           
-        // Fetch completed lessons
-        const { count: completedLessons } = await supabase
-          .from('lesson_completions')
-          .select('id', { count: 'exact', head: true })
-          .eq('student_id', user.id)
-          .eq('progress_percent', 100); // Only counting 100% completed?
+        const completedLessons = studentProgress.filter(
+          (progress) => progress.courseId === cId && progress.progressPercent >= 100
+        ).length;
           
         // Fetch tutor (simplified, just get one)
-        const { data: ctData } = await supabase
-          .from('course_tutors')
-          .select('tutor_id')
-          .eq('course_id', cId)
-          .limit(1)
-          .maybeSingle();
-          
-        let tutorName = "Explicador";
-        if (ctData?.tutor_id) {
-          const { data: tProfile } = await supabase.from('profiles').select('full_name').eq('user_id', ctData.tutor_id).single();
-          if (tProfile) tutorName = tProfile.full_name;
-        }
+        const { data: tutorProfiles } = await supabase.rpc("get_course_tutors", { p_course_id: cId });
+        const tutorName = tutorProfiles?.[0]?.full_name || "Explicador";
 
         const progress = totalLessons && totalLessons > 0 
           ? Math.round(((completedLessons || 0) / totalLessons) * 100) 
@@ -141,24 +148,16 @@ export default function StudentDashboard() {
       setEnrolledCourses(coursesResult);
 
       // 3. Aulas Assistidas (Total of unique lessons started)
-      const { count: watchedCount } = await supabase
-        .from('lesson_completions')
-        .select('id', { count: 'exact', head: true })
-        .eq('student_id', user.id);
-
       setStats({
         enrolledCourses: activeEnrollments.length,
-        watchedLessons: watchedCount || 0,
+        watchedLessons: studentProgress.length,
         nextPayment: { amount: nextPaymentAmount, date: nextPaymentDate }
       });
 
       // 4. Atividade Recente (Notifications)
-      const { data: notifs } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(3);
+      const notificationResponse = await fetch("/api/notifications", { cache: "no-store" });
+      const notificationResult = notificationResponse.ok ? await notificationResponse.json() : { notifications: [] };
+      const notifs = ((notificationResult.notifications || []) as DashboardNotification[]).slice(0, 3);
 
       if (notifs) {
         setRecentActivity(notifs.map(n => ({
@@ -180,13 +179,9 @@ export default function StudentDashboard() {
           .limit(10);
           
         // Fetch completions to filter them out
-        const { data: completions } = await supabase
-          .from('lesson_completions')
-          .select('lesson_id')
-          .eq('student_id', user.id)
-          .eq('progress_percent', 100);
-          
-        const completedIds = new Set((completions || []).map(c => c.lesson_id));
+        const completedIds = new Set(
+          studentProgress.filter((progress) => progress.progressPercent >= 100).map((progress) => progress.lessonId)
+        );
         
         if (lessons) {
           const upcoming = lessons

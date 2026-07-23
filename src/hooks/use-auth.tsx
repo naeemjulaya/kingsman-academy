@@ -9,6 +9,7 @@ export type UserRole = "ESTUDANTE" | "EXPLICADOR" | "COORDENADOR" | "ADMIN";
 
 interface User {
   id: string;
+  profileId: string;
   email: string;
   role: UserRole;
   fullName: string;
@@ -52,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const { data: existingProfile, error: profileError } = await supabase
         .from("profiles")
-        .select("role, full_name, avatar_url")
+        .select("id, role, full_name, avatar_url")
         .eq("user_id", currentUser.id)
         .maybeSingle();
 
@@ -71,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             role: "ESTUDANTE",
             status: "active",
           }, { onConflict: "user_id" })
-          .select("role, full_name, avatar_url")
+          .select("id, role, full_name, avatar_url")
           .single();
         if (createError) {
           throw new Error(`A conta existe, mas não foi possível criar o perfil: ${createError.message}`);
@@ -84,6 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         : "ESTUDANTE";
       setUser({
         id: currentUser.id,
+        profileId: profile.id,
         email: currentUser.email ?? "",
         role,
         fullName: profile.full_name || currentUser.user_metadata?.full_name || "Utilizador",

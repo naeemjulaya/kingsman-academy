@@ -77,12 +77,14 @@ export default function LessonPlayerPage() {
       }
 
       // 2. Verifica enrollment
-      const { data: enrollment } = await supabase
-        .from("enrollments")
-        .select("status, payment_status, end_date")
-        .eq("student_id", user?.id)
-        .eq("course_id", lessonData.course_id)
-        .single();
+      const enrollmentResponse = await fetch(
+        `/api/student/enrollments?courseId=${encodeURIComponent(lessonData.course_id)}`,
+        { cache: "no-store" }
+      );
+      const enrollmentResult = enrollmentResponse.ok
+        ? await enrollmentResponse.json()
+        : { enrollments: [] };
+      const enrollment = enrollmentResult.enrollments?.[0];
 
       const accessGranted = enrollment && 
         enrollment.status === "ACTIVE" && 
@@ -167,32 +169,13 @@ export default function LessonPlayerPage() {
 
   async function trackLessonProgress(lessonId: string, progress: number) {
     try {
-      const { data: existing } = await supabase
-        .from("lesson_completions")
-        .select("id")
-        .eq("student_id", user?.id)
-        .eq("lesson_id", lessonId)
-        .single();
-
-      if (existing) {
-        await supabase
-          .from("lesson_completions")
-          .update({ 
-            progress_percent: Math.max(progress, 0),
-            updated_at: new Date().toISOString(),
-            completed_at: progress >= 100 ? new Date().toISOString() : null
-          })
-          .eq("id", existing.id);
-      } else {
-        await supabase
-          .from("lesson_completions")
-          .insert({
-            student_id: user?.id,
-            lesson_id: lessonId,
-            progress_percent: Math.max(progress, 0),
-            watched_duration: 0,
-          });
-      }
+      const response = await fetch("/api/student/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lessonId, progress: Math.max(progress, 0) }),
+        keepalive: true,
+      });
+      if (!response.ok) throw new Error("Não foi possível guardar o progresso");
     } catch (error) {
       console.error("Erro ao registrar progresso:", error);
     }

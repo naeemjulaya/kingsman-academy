@@ -22,6 +22,17 @@ interface Lesson {
   progress_percent: number;
 }
 
+interface StudentEnrollment {
+  course_id: string;
+  status: string;
+  payment_status: string;
+}
+
+interface StudentProgress {
+  lessonId: string;
+  progressPercent: number;
+}
+
 export default function StudentLessonsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -45,12 +56,12 @@ export default function StudentLessonsPage() {
   async function fetchLessons() {
     try {
       // Busca enrollments ativos do estudante
-      const { data: enrollments } = await supabase
-        .from("enrollments")
-        .select("course_id")
-        .eq("student_id", user?.id)
-        .eq("status", "ACTIVE")
-        .eq("payment_status", "CONFIRMED");
+      const enrollmentResponse = await fetch("/api/student/enrollments", { cache: "no-store" });
+      const enrollmentResult = await enrollmentResponse.json();
+      if (!enrollmentResponse.ok) throw new Error(enrollmentResult.error || "Não foi possível carregar as inscrições");
+      const enrollments = ((enrollmentResult.enrollments || []) as StudentEnrollment[]).filter(
+        (enrollment) => enrollment.status === "ACTIVE" && enrollment.payment_status === "CONFIRMED"
+      );
 
       if (!enrollments || enrollments.length === 0) {
         setLessons([]);
@@ -72,10 +83,12 @@ export default function StudentLessonsPage() {
         .order("order_index");
 
       // Busca progresso do estudante
-      const { data: completions } = await supabase
-        .from("lesson_completions")
-        .select("lesson_id, progress_percent")
-        .eq("student_id", user?.id);
+      const progressResponse = await fetch("/api/student/progress", { cache: "no-store" });
+      const progressResult = progressResponse.ok ? await progressResponse.json() : { progress: [] };
+      const completions = ((progressResult.progress || []) as StudentProgress[]).map((progress) => ({
+        lesson_id: progress.lessonId,
+        progress_percent: progress.progressPercent,
+      }));
 
       const completionMap = new Map();
       completions?.forEach(c => completionMap.set(c.lesson_id, c.progress_percent));

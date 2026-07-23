@@ -76,12 +76,13 @@ export default function CourseDetail({ params }: PageProps) {
         
         // 5. Check Enrollment if user is logged in
         if (user) {
-          const { data: enrollment } = await supabase
-            .from('enrollments')
-            .select('status, payment_status, end_date')
-            .eq('student_id', user.id)
-            .eq('course_id', id)
-            .maybeSingle();
+          const enrollmentResponse = await fetch(`/api/student/enrollments?courseId=${encodeURIComponent(id)}`, {
+            cache: "no-store",
+          });
+          const enrollmentResult = enrollmentResponse.ok
+            ? await enrollmentResponse.json()
+            : { enrollments: [] };
+          const enrollment = enrollmentResult.enrollments?.[0];
             
           const accessGranted = enrollment && 
             enrollment.status === "ACTIVE" && 
