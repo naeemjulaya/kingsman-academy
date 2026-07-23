@@ -117,55 +117,39 @@ export default function CheckoutContent() {
 
         setLoading(true);
         try {
-            const proofForm = new FormData();
-            proofForm.append("file", file);
             const proofResponse = await fetch("/api/payments/proof", {
                 method: "POST",
-                body: proofForm,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    fileName: file.name,
+                    contentType: file.type,
+                    fileSize: file.size,
+                }),
             });
             const proofResult = await proofResponse.json();
             if (!proofResponse.ok) throw new Error(proofResult.error || "Falha ao enviar o comprovativo");
             const filePath = proofResult.path as string;
 
-            const { data: paymentData, error: paymentError } = await supabase
-                .from('payments')
-                .insert({
-                    student_id: user.id,
-                    course_id: course.id,
-                    amount: course.price_monthly,
-                    method: method,
-                    status: 'PENDING',
-                    proof_url: filePath
-                })
-                .select('id')
-                .single();
+            const r2UploadResponse = await fetch(proofResult.uploadUrl, {
+                method: "PUT",
+                headers: { "Content-Type": file.type },
+                body: file,
+            });
+            if (!r2UploadResponse.ok) throw new Error("O R2 não aceitou o comprovativo");
 
-            if (paymentError) throw paymentError;
+            const paymentResponse = await fetch("/api/payments/submit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    courseId: course.id,
+                    method,
+                    proofPath: filePath,
+                }),
+            });
+            const paymentResult = await paymentResponse.json();
+            if (!paymentResponse.ok) throw new Error(paymentResult.error || "Falha ao registar o pagamento");
 
-            const { data: existingEnrollment } = await supabase
-                .from('enrollments')
-                .select('id')
-                .eq('student_id', user.id)
-                .eq('course_id', course.id)
-                .maybeSingle();
-
-            if (existingEnrollment) {
-                await supabase
-                    .from('enrollments')
-                    .update({ payment_status: 'PENDING' })
-                    .eq('id', existingEnrollment.id);
-            } else {
-                await supabase
-                    .from('enrollments')
-                    .insert({
-                        student_id: user.id,
-                        course_id: course.id,
-                        status: 'PENDING',
-                        payment_status: 'PENDING'
-                    });
-            }
-
-            setTransactionId(paymentData.id.split('-')[0].toUpperCase());
+            setTransactionId(paymentResult.paymentId.split('-')[0].toUpperCase());
             setStep(3);
         } catch (error) {
             console.error("Error submitting payment:", error);

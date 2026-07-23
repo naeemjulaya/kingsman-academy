@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { BRAND_LOGO_URL } from "@/lib/branding";
 
 interface Settings {
   platform_name: string;
@@ -28,7 +29,7 @@ const defaults: Settings = {
   platform_name: "Kingsman Academy",
   contact_email: "suporte@kingsman.academy",
   contact_phone: "",
-  logo_url: "",
+  logo_url: BRAND_LOGO_URL,
   mpesa_number: "849418723",
   emola_number: "863312201",
   bank_details: "BIM (NIB)\n000100000103813561457",

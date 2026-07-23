@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SocialLinks } from "@/components/social-links";
+import { BRAND_LOGO_URL, BRAND_MARK_URL } from "@/lib/branding";
 
 interface LandingTutor {
   id: string;
@@ -93,6 +94,7 @@ export default function LandingPage() {
     platform_name: "Kingsman Academy",
     contact_email: "",
     contact_phone: "",
+    logo_url: BRAND_LOGO_URL,
   });
   const [catalog, setCatalog] = useState<LandingCatalog>({
     courses: fallbackCourses,
@@ -172,8 +174,9 @@ export default function LandingPage() {
       {/* NAVBAR */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#150b14]/80 backdrop-blur-md border-b border-primary/10 h-20 shadow-md shadow-primary/5">
         <div className="max-w-[1440px] mx-auto px-6 md:px-12 h-full flex items-center justify-between">
-          <Link href="/" className="font-playfair text-[#FF48FF] font-bold text-lg md:text-xl tracking-tight">
-            {platform.platform_name.toUpperCase()}
+          <Link href="/" className="flex items-center gap-3 font-playfair text-[#FF48FF] font-bold text-lg md:text-xl tracking-tight">
+            <img src={BRAND_MARK_URL} alt="" className="h-11 w-11 rounded-xl border border-primary/20 object-cover shadow-lg shadow-primary/10" />
+            <span className="hidden sm:inline">{platform.platform_name.toUpperCase()}</span>
           </Link>
           <div className="hidden md:flex items-center gap-10">
             <a href="#cadeiras" className="text-on-surface-variant hover:text-primary transition-colors text-sm font-semibold">Cadeiras</a>
@@ -472,7 +475,10 @@ export default function LandingPage() {
       <footer className="bg-[#150b14] border-t border-primary/10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 px-6 md:px-12 py-16 max-w-[1440px] mx-auto">
           <div className="space-y-4 col-span-1">
-            <h2 className="font-playfair text-xl text-primary tracking-tight font-bold">{platform.platform_name.toUpperCase()}</h2>
+            <div className="flex items-center gap-3">
+              <img src={BRAND_MARK_URL} alt="" className="h-11 w-11 rounded-xl border border-primary/20 object-cover" />
+              <h2 className="font-playfair text-xl text-primary tracking-tight font-bold">{platform.platform_name.toUpperCase()}</h2>
+            </div>
             <p className="text-xs text-on-surface-variant leading-relaxed">
               Elevando o padrão da educação universitária em Moçambique através de tecnologia e expertise.
             </p>

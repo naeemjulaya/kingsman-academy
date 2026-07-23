@@ -7,6 +7,7 @@ import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
 import { getErrorMessage } from "@/lib/errors";
 
@@ -28,6 +29,7 @@ export default function PagamentosPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("TODOS");
   const [search, setSearch] = useState("");
+  const [proofPayment, setProofPayment] = useState<Pagamento | null>(null);
 
   useEffect(() => {
     fetchPayments();
@@ -231,15 +233,14 @@ export default function PagamentosPage() {
                       </TableCell>
                       <TableCell>
                         {p.proof_url ? (
-                          <a
-                            href={`/api/admin/payments/${p.id}/proof`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            type="button"
+                            onClick={() => setProofPayment(p)}
                             className="inline-flex items-center gap-1.5 rounded bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary transition-colors hover:bg-primary/20"
                           >
                             <span className="material-symbols-outlined text-base">receipt_long</span>
                             Ver comprovativo
-                          </a>
+                          </button>
                         ) : (
                           <span className="text-xs text-[#808080]">Não enviado</span>
                         )}
@@ -288,6 +289,26 @@ export default function PagamentosPage() {
             </div>
           )}
         </Card>
+
+        <Dialog open={Boolean(proofPayment)} onOpenChange={(open) => !open && setProofPayment(null)}>
+          <DialogContent onClose={() => setProofPayment(null)} className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>Comprovativo de pagamento</DialogTitle>
+              <DialogDescription>
+                {proofPayment ? `${proofPayment.student_name} — ${proofPayment.plan}` : "Documento submetido pelo estudante"}
+              </DialogDescription>
+            </DialogHeader>
+            {proofPayment && (
+              <div className="overflow-hidden rounded-xl border border-primary/15 bg-black/30">
+                <iframe
+                  src={`/api/admin/payments/${proofPayment.id}/proof`}
+                  title={`Comprovativo de ${proofPayment.student_name}`}
+                  className="h-[70vh] w-full bg-white"
+                />
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </RouteGuard>
   );

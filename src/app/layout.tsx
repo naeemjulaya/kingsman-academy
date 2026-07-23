@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
+import { BRAND_MARK_URL } from "@/lib/branding";
 import "./globals.css";
 
 const inter = Inter({
@@ -13,8 +14,9 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Kingsman Academy | Elite Academic Performance",
+  title: "Kingsman Academy | Excelência Académica",
   description: "Acesso exclusivo aos melhores explicadores e materiais de elite em Moçambique.",
+  icons: { icon: BRAND_MARK_URL, apple: BRAND_MARK_URL },
 };
 
 export default function RootLayout({

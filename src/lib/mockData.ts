@@ -19,7 +19,8 @@ export const mockTutors: Profile[] = [
     university: "UEM",
     role: "EXPLICADOR",
     status: "active",
-    avatar_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuBE3JrmqnsINXQpMVwnJ9kN6S-UKnXjKZZ_-frYoBQGz2Zc9hPbNVXMRkCUFJMt5FDvJfwTKDPmSwH8JoxNUzf3ll3zecJjjK-cZXoTCq1UhfVc2NLBAiGbLi36Bv7jOwudBX-lIg9NZZ11qTlUtolW1ZD3BMeKzn4k0CeQ3xnOIRdRvpW_6AWF8kK3EpDk_lQpv30kN9QbY82FyK3ycf41wvUxBStnxv2e__jV7THNrv6U6fDH4nuL1g9GfV2KO-T-CuGNzwTvQnst",
+    bio: "Nilzam Bakali é estudante da Licenciatura em Ecologia e Conservação da Biodiversidade Terrestre na Universidade Eduardo Mondlane (UEM). Possui experiência na explicação de Biologia e Bioestatística, aliando clareza, dedicação e uma abordagem orientada para a compreensão dos conteúdos. Aspira especializar-se como bioestatística e conservacionista, contribuindo para a investigação científica e para a preservação da biodiversidade através da aplicação de métodos estatísticos.",
+    avatar_url: "https://res.cloudinary.com/ddsjybint/image/upload/v1784803990/nilzam_iyo5zv.jpg",
   },
   {
     user_id: "t3",
@@ -57,7 +58,7 @@ export const mockCourseTutors: CourseTutor[] = [
   { id: "ct1", course_id: "c1", tutor_id: "t1", is_active: true },
   { id: "ct2", course_id: "c2", tutor_id: "t2", is_active: true },
   { id: "ct3", course_id: "c3", tutor_id: "t3", is_active: true },
-  { id: "ct4", course_id: "c4", tutor_id: "t4", is_active: true },
+  { id: "ct4", course_id: "c4", tutor_id: "t1", is_active: true },
   { id: "ct5", course_id: "c5", tutor_id: "t5", is_active: true },
   { id: "ct6", course_id: "c6", tutor_id: "t1", is_active: true },
 ];
@@ -95,11 +96,11 @@ export const mockCourses: Course[] = [
   },
   {
     id: "c4",
-    name: "Bioquímica Vegetal",
-    department: "Agronomia",
+    name: "Bioquímica",
+    department: "DCB",
     price_monthly: 650,
     price_per_lesson: 150,
-    description: "Metabolismo, fotossíntese e processos vitais no reino das plantas.",
+    description: "Bases moleculares da vida, biomoléculas, metabolismo celular e mecanismos de regulação.",
     max_tutors: 1,
     is_active: true,
   },

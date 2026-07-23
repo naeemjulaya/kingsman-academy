@@ -1,4 +1,5 @@
 import React from "react";
+import { BRAND_LOGO_URL, BRAND_MARK_URL } from "@/lib/branding";
 
 export const AuthLayout = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -14,12 +15,7 @@ export const AuthLayout = ({ children }: { children: React.ReactNode }) => {
         <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-[#0A0A0A] to-transparent"></div>
         
         <div className="relative z-10 px-10 text-center max-w-md">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/40">
-              <span className="font-playfair text-[#FF48FF] font-bold text-xl">K</span>
-            </div>
-            <h1 className="font-playfair text-3xl text-primary font-bold tracking-widest">KINGSMAN</h1>
-          </div>
+          <img src={BRAND_LOGO_URL} alt="Kingsman Academy" className="mx-auto mb-5 w-full max-w-[290px] rounded-2xl border border-primary/15 shadow-2xl shadow-primary/10" />
           <p className="font-sans text-sm text-on-surface-variant max-w-xs mx-auto leading-relaxed">
             Prepare-se para entrar na elite acadêmica. O seu futuro de excelência começa com um único passo.
           </p>
@@ -36,9 +32,7 @@ export const AuthLayout = ({ children }: { children: React.ReactNode }) => {
         <div className="w-full max-w-md">
           {/* Mobile logo indicator */}
           <div className="md:hidden flex items-center justify-center gap-2 mb-8 text-center">
-            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/40">
-              <span className="font-playfair text-[#FF48FF] font-bold text-md">K</span>
-            </div>
+            <img src={BRAND_MARK_URL} alt="Logótipo Kingsman" className="w-10 h-10 rounded-xl object-cover border border-primary/30" />
             <h2 className="font-playfair text-xl text-primary font-bold tracking-widest">KINGSMAN</h2>
           </div>
           {children}

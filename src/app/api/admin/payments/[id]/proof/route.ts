@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient, requireAdmin } from "@/lib/supabase/admin";
+import { createPaymentProofDownloadUrl } from "@/lib/r2";
 
 export const runtime = "nodejs";
 
@@ -34,6 +35,16 @@ export async function GET(_request: Request, context: RouteContext) {
   const proofPath = getStoredProofPath(payment.proof_url);
   if (!proofPath) return NextResponse.json({ error: "Comprovativo inválido" }, { status: 400 });
 
+  if (proofPath.startsWith("payment-proofs/")) {
+    try {
+      const url = await createPaymentProofDownloadUrl(proofPath);
+      return NextResponse.redirect(url, { headers: { "Cache-Control": "private, no-store" } });
+    } catch {
+      return NextResponse.json({ error: "Não foi possível abrir o comprovativo no R2" }, { status: 500 });
+    }
+  }
+
+  // Compatibility for proofs uploaded to Supabase before the R2 migration.
   const { data, error } = await admin.storage.from("payment-proofs").createSignedUrl(proofPath, 300);
   if (error || !data?.signedUrl) {
     return NextResponse.json({ error: "Não foi possível abrir o comprovativo" }, { status: 500 });

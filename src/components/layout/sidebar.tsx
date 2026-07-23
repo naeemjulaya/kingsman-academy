@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { BRAND_MARK_URL } from "@/lib/branding";
 
 interface MenuItem {
   title: string;
@@ -106,9 +107,7 @@ export function Sidebar() {
       >
         {/* Brand Header */}
         <div className="h-20 flex items-center gap-3 px-6 border-b border-primary/10">
-          <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/40">
-            <span className="font-playfair text-[#FF48FF] font-bold text-lg">K</span>
-          </div>
+          <img src={BRAND_MARK_URL} alt="Logótipo Kingsman" className="w-10 h-10 rounded-xl object-cover border border-primary/30 shadow-lg shadow-primary/10" />
           <span className="font-playfair text-[#FF48FF] tracking-widest font-bold text-lg">KINGSMAN</span>
         </div>
 
