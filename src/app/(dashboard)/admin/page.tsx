@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import { RouteGuard } from "@/components/auth/route-guard";
+import { PaymentProofDialog } from "@/components/admin/payment-proof-dialog";
 
 // SOLUÇÃO DA VERCEL: Força o Next.js a tratar o painel como dinâmico, evitando quebras no build
 export const dynamic = "force-dynamic";
@@ -25,6 +26,7 @@ interface PaymentRow {
   method: string;
   created_at: string;
   status: string;
+  proof_url: string | null;
   student: StudentProfile | StudentProfile[] | null;
   course: CourseData | CourseData[] | null;
 }
@@ -39,6 +41,13 @@ export default function AdminDashboard() {
     monthlyRevenue: 0
   });
   const [loading, setLoading] = useState(true);
+  const [proofPayment, setProofPayment] = useState<{
+    id: string;
+    studentName: string;
+    courseName: string;
+    proofUrl: string;
+    submittedAt: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchAdminData();
@@ -51,7 +60,7 @@ export default function AdminDashboard() {
       const { data: pendingPayments } = await supabase
         .from('payments')
         .select(`
-          id, amount, method, created_at, status,
+          id, amount, method, created_at, status, proof_url,
           student:student_id(full_name),
           course:course_id(name)
         `)
@@ -100,18 +109,13 @@ export default function AdminDashboard() {
 
   const handleAction = async (id: string, newStatus: "CONFIRMED" | "REJECTED") => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase.rpc('confirm_payment', {
-        p_payment_id: id,
-        p_admin_id: user.id,
-        p_status: newStatus
+      const response = await fetch(`/api/admin/payments/${id}/validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
       });
-
-      if (error || !data?.success) {
-        throw new Error(error?.message || data?.error || 'Erro desconhecido');
-      }
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Não foi possível validar o pagamento");
 
       setPayments((prev) => prev.filter((p) => p.id !== id));
       alert(`Pagamento foi ${newStatus === "CONFIRMED" ? "confirmado" : "rejeitado"} com sucesso!`);
@@ -230,6 +234,7 @@ export default function AdminDashboard() {
                       <TableHead>Valor</TableHead>
                       <TableHead>Método</TableHead>
                       <TableHead>Data</TableHead>
+                      <TableHead>Comprovativo</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -251,6 +256,26 @@ export default function AdminDashboard() {
                           <TableCell className="font-semibold text-primary">{p.amount} MT</TableCell>
                           <TableCell>{p.method}</TableCell>
                           <TableCell>{new Date(p.created_at).toLocaleDateString("pt-PT")}</TableCell>
+                          <TableCell>
+                            {p.proof_url ? (
+                              <button
+                                type="button"
+                                onClick={() => setProofPayment({
+                                  id: p.id,
+                                  studentName: studentName || "Desconhecido",
+                                  courseName: courseName || "Desconhecida",
+                                  proofUrl: p.proof_url || "",
+                                  submittedAt: p.created_at,
+                                })}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20"
+                              >
+                                <span className="material-symbols-outlined text-base">image</span>
+                                Ver
+                              </button>
+                            ) : (
+                              <span className="text-xs text-on-surface-variant">Não enviado</span>
+                            )}
+                          </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               <button
@@ -301,6 +326,8 @@ export default function AdminDashboard() {
             </Card>
           </div>
         </div>
+
+        <PaymentProofDialog payment={proofPayment} onClose={() => setProofPayment(null)} />
       </div>
     </RouteGuard>
   );

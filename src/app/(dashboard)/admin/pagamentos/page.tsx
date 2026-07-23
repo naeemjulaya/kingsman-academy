@@ -7,9 +7,9 @@ import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
 import { getErrorMessage } from "@/lib/errors";
+import { PaymentProofDialog } from "@/components/admin/payment-proof-dialog";
 
 interface Pagamento {
   id: string;
@@ -30,7 +30,6 @@ export default function PagamentosPage() {
   const [statusFilter, setStatusFilter] = useState("TODOS");
   const [search, setSearch] = useState("");
   const [proofPayment, setProofPayment] = useState<Pagamento | null>(null);
-  const [proofLoadError, setProofLoadError] = useState(false);
 
   useEffect(() => {
     fetchPayments();
@@ -82,12 +81,13 @@ export default function PagamentosPage() {
 
   const handleAction = async (id: string, newStatus: "CONFIRMED" | "REJECTED") => {
     try {
-      const { error } = await supabase.rpc("admin_validate_payment", {
-        p_payment_id: id,
-        p_status: newStatus,
+      const response = await fetch(`/api/admin/payments/${id}/validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
       });
-
-      if (error) throw error;
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Não foi possível validar o pagamento");
 
       setPayments(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p));
       alert(`Pagamento foi ${newStatus === "CONFIRMED" ? "confirmado" : "rejeitado"} com sucesso!`);
@@ -113,7 +113,6 @@ export default function PagamentosPage() {
   });
 
   const openProof = (payment: Pagamento) => {
-    setProofLoadError(false);
     setProofPayment(payment);
   };
 
@@ -320,62 +319,16 @@ export default function PagamentosPage() {
           )}
         </Card>
 
-        <Dialog open={Boolean(proofPayment)} onOpenChange={(open) => {
-          if (!open) {
-            setProofPayment(null);
-            setProofLoadError(false);
-          }
-        }}>
-          <DialogContent onClose={() => setProofPayment(null)} className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>Comprovativo de pagamento</DialogTitle>
-              <DialogDescription>
-                {proofPayment ? `${proofPayment.student_name} — ${proofPayment.plan}` : "Documento submetido pelo estudante"}
-              </DialogDescription>
-            </DialogHeader>
-            {proofPayment && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-primary/10 bg-primary/5 px-4 py-3 text-xs">
-                  <span className="min-w-0 truncate text-on-surface-variant">
-                    Documento submetido em {proofPayment.date ? new Date(proofPayment.date).toLocaleString("pt-PT") : "data desconhecida"}
-                  </span>
-                  <a
-                    href={`/api/admin/payments/${proofPayment.id}/proof`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex shrink-0 items-center gap-1.5 font-bold text-primary hover:underline"
-                  >
-                    Abrir em nova aba
-                    <span className="material-symbols-outlined text-base">open_in_new</span>
-                  </a>
-                </div>
-
-                <div className="flex min-h-[420px] items-center justify-center overflow-hidden rounded-xl border border-primary/15 bg-black/40">
-                  {proofLoadError ? (
-                    <div className="max-w-sm p-8 text-center">
-                      <span className="material-symbols-outlined text-4xl text-red-300">broken_image</span>
-                      <p className="mt-3 text-sm font-bold text-on-surface">Não foi possível mostrar o comprovativo.</p>
-                      <p className="mt-1 text-xs text-on-surface-variant">Confirme as variáveis R2 e Supabase na Vercel ou tente abrir o documento numa nova aba.</p>
-                    </div>
-                  ) : proofPayment.proof_url.toLowerCase().endsWith(".pdf") ? (
-                    <iframe
-                      src={`/api/admin/payments/${proofPayment.id}/proof`}
-                      title={`Comprovativo de ${proofPayment.student_name}`}
-                      className="h-[70vh] w-full bg-white"
-                    />
-                  ) : (
-                    <img
-                      src={`/api/admin/payments/${proofPayment.id}/proof`}
-                      alt={`Comprovativo de pagamento de ${proofPayment.student_name}`}
-                      className="max-h-[70vh] w-full object-contain"
-                      onError={() => setProofLoadError(true)}
-                    />
-                  )}
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
+        <PaymentProofDialog
+          payment={proofPayment ? {
+            id: proofPayment.id,
+            studentName: proofPayment.student_name,
+            courseName: proofPayment.plan,
+            proofUrl: proofPayment.proof_url,
+            submittedAt: proofPayment.date,
+          } : null}
+          onClose={() => setProofPayment(null)}
+        />
       </div>
     </RouteGuard>
   );

@@ -81,13 +81,6 @@ export const Navbar = () => {
   };
 
   const isAdmin = pathname?.startsWith("/admin");
-  const isCoordenador = pathname?.startsWith("/coordenador");
-  const isExplicador = pathname?.startsWith("/explicador");
-  
-  let roleTitle = "Painel de Estudante";
-  if (isAdmin) roleTitle = "Painel de Administração";
-  else if (isCoordenador) roleTitle = "Painel de Coordenação";
-  else if (isExplicador) roleTitle = "Painel de Explicador";
 
   const firstName = user?.fullName?.split(" ")[0] || "Utilizador";
   const greeting = loading ? "A carregar perfil…" : isAdmin ? "Painel de Administração" : `Bom dia, ${firstName}`;
