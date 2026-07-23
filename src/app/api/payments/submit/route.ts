@@ -13,24 +13,34 @@ const submissionSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
-
-  const parsed = submissionSchema.safeParse(await request.json());
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Dados do pagamento inválidos" }, { status: 400 });
-  }
-
-  const { courseId, method, proofPath } = parsed.data;
-  if (!proofPath.startsWith(`payment-proofs/${user.id}/`) || proofPath.includes("..")) {
-    return NextResponse.json({ error: "Comprovativo inválido" }, { status: 403 });
-  }
-
-  const admin = createAdminClient();
+  let admin: ReturnType<typeof createAdminClient> | null = null;
   let paymentId: string | null = null;
+  let proofPath: string | null = null;
 
   try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+
+    let requestBody: unknown;
+    try {
+      requestBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: "O pedido de pagamento não contém JSON válido" }, { status: 400 });
+    }
+
+    const parsed = submissionSchema.safeParse(requestBody);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Dados do pagamento inválidos" }, { status: 400 });
+    }
+
+    const { courseId, method } = parsed.data;
+    proofPath = parsed.data.proofPath;
+    if (!proofPath.startsWith(`payment-proofs/${user.id}/`) || proofPath.includes("..")) {
+      return NextResponse.json({ error: "Comprovativo inválido" }, { status: 403 });
+    }
+
+    admin = createAdminClient();
     const [{ data: profile, error: profileError }, { data: course, error: courseError }] = await Promise.all([
       admin.from("profiles").select("id,status").eq("user_id", user.id).single(),
       admin.from("courses").select("id,price_monthly,is_active").eq("id", courseId).single(),
@@ -82,8 +92,15 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ paymentId }, { status: 201 });
   } catch (error) {
-    if (paymentId) await admin.from("payments").delete().eq("id", paymentId);
-    await deletePaymentProofObject(proofPath).catch(() => undefined);
+    if (paymentId && admin) {
+      try {
+        await admin.from("payments").delete().eq("id", paymentId);
+      } catch {
+        // Preserve the original submission error.
+      }
+    }
+    if (proofPath) await deletePaymentProofObject(proofPath).catch(() => undefined);
+    console.error("Error submitting payment:", error);
     return NextResponse.json({
       error: error instanceof Error ? error.message : "Não foi possível submeter o pagamento",
     }, { status: 500 });

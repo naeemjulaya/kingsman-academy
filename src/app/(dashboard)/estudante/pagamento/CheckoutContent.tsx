@@ -15,6 +15,26 @@ interface PaymentSettings {
     payment_review_hours: number;
 }
 
+type PaymentApiResult = {
+    error?: string;
+    path?: string;
+    uploadUrl?: string;
+    paymentId?: string;
+};
+
+async function readPaymentApiResult(response: Response): Promise<PaymentApiResult> {
+    const body = await response.text();
+    if (!body.trim()) {
+        throw new Error(`O servidor respondeu sem dados (HTTP ${response.status}).`);
+    }
+
+    try {
+        return JSON.parse(body) as PaymentApiResult;
+    } catch {
+        throw new Error(`O servidor devolveu uma resposta inválida (HTTP ${response.status}).`);
+    }
+}
+
 export default function CheckoutContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -126,9 +146,12 @@ export default function CheckoutContent() {
                     fileSize: file.size,
                 }),
             });
-            const proofResult = await proofResponse.json();
+            const proofResult = await readPaymentApiResult(proofResponse);
             if (!proofResponse.ok) throw new Error(proofResult.error || "Falha ao enviar o comprovativo");
-            const filePath = proofResult.path as string;
+            if (!proofResult.path || !proofResult.uploadUrl) {
+                throw new Error("A resposta de preparação do comprovativo está incompleta");
+            }
+            const filePath = proofResult.path;
 
             const r2UploadResponse = await fetch(proofResult.uploadUrl, {
                 method: "PUT",
@@ -146,14 +169,15 @@ export default function CheckoutContent() {
                     proofPath: filePath,
                 }),
             });
-            const paymentResult = await paymentResponse.json();
+            const paymentResult = await readPaymentApiResult(paymentResponse);
             if (!paymentResponse.ok) throw new Error(paymentResult.error || "Falha ao registar o pagamento");
+            if (!paymentResult.paymentId) throw new Error("O pagamento foi registado sem um identificador");
 
             setTransactionId(paymentResult.paymentId.split('-')[0].toUpperCase());
             setStep(3);
         } catch (error) {
             console.error("Error submitting payment:", error);
-            alert("Ocorreu um erro ao submeter o comprovativo. Tente novamente.");
+            alert(error instanceof Error ? error.message : "Ocorreu um erro ao submeter o comprovativo. Tente novamente.");
         } finally {
             setLoading(false);
         }
