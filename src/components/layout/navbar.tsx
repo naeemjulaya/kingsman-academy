@@ -1,51 +1,83 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+
+type NotificationItem = {
+  id: string;
+  type: string;
+  title: string;
+  content: string;
+  is_read: boolean;
+  metadata: { href?: string; payment_id?: string } | null;
+  created_at: string;
+};
 
 export const Navbar = () => {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
-  const supabase = createClient();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
-  useEffect(() => {
-    if (user) {
-      fetchNotifications();
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return;
+    try {
+      const response = await fetch("/api/notifications", { cache: "no-store" });
+      if (!response.ok) return;
+      const result = await response.json() as { notifications?: NotificationItem[] };
+      setNotifications(result.notifications || []);
+    } catch {
+      // Notifications must never interrupt the rest of the dashboard.
     }
   }, [user]);
 
-  const fetchNotifications = async () => {
-    if (!user) return;
-    const { data, error } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(10);
-
-    if (!error && data) {
-      setNotifications(data);
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      return;
     }
-  };
+
+    void fetchNotifications();
+    const interval = window.setInterval(() => void fetchNotifications(), 30_000);
+    const refreshOnFocus = () => void fetchNotifications();
+    window.addEventListener("focus", refreshOnFocus);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshOnFocus);
+    };
+  }, [fetchNotifications, user]);
 
   const handleMarkAsRead = async (id: string) => {
     if (!user) return;
-    await supabase.from("notifications").update({ is_read: true }).eq("id", id);
-    setNotifications(notifications.map(n => n.id === id ? { ...n, is_read: true } : n));
+    await fetch("/api/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    }).catch(() => undefined);
+    setNotifications((current) => current.map((notification) =>
+      notification.id === id ? { ...notification, is_read: true } : notification
+    ));
   };
 
   const handleMarkAllAsRead = async () => {
     if (!user) return;
-    await supabase.from("notifications").update({ is_read: true }).eq("user_id", user.id);
-    setNotifications(notifications.map(n => ({ ...n, is_read: true })));
+    await fetch("/api/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ all: true }),
+    }).catch(() => undefined);
+    setNotifications((current) => current.map((notification) => ({ ...notification, is_read: true })));
+  };
+
+  const openNotification = async (notification: NotificationItem) => {
+    await handleMarkAsRead(notification.id);
+    setNotificationsOpen(false);
+    if (notification.metadata?.href) router.push(notification.metadata.href);
   };
 
   const isAdmin = pathname?.startsWith("/admin");
@@ -88,6 +120,8 @@ export const Navbar = () => {
         {/* Notifications Icon & Panel */}
         <div className="relative">
           <button
+            type="button"
+            aria-label={unreadNotifications ? `${unreadNotifications} notificações não lidas` : "Notificações"}
             onClick={() => {
               setNotificationsOpen(!notificationsOpen);
               setDropdownOpen(false);
@@ -96,7 +130,9 @@ export const Navbar = () => {
           >
             <span className="material-symbols-outlined">notifications</span>
             {unreadNotifications > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-primary rounded-full border border-[#0A0A0A] shadow-[0_0_8px_#FF48FF]"></span>
+              <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full border-2 border-[#0A0A0A] bg-primary px-1 text-[9px] font-black leading-none text-black shadow-[0_0_10px_#FF48FF]">
+                {unreadNotifications > 9 ? "9+" : unreadNotifications}
+              </span>
             )}
           </button>
 
@@ -123,7 +159,7 @@ export const Navbar = () => {
                   notifications.map((notif) => (
                     <div
                       key={notif.id}
-                      onClick={() => handleMarkAsRead(notif.id)}
+                      onClick={() => void openNotification(notif)}
                       className={`p-2 rounded-lg transition-colors cursor-pointer hover:bg-surface-container/40 ${
                         !notif.is_read ? "bg-primary/5 border-l-2 border-primary" : ""
                       }`}

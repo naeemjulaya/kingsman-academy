@@ -30,6 +30,7 @@ export default function PagamentosPage() {
   const [statusFilter, setStatusFilter] = useState("TODOS");
   const [search, setSearch] = useState("");
   const [proofPayment, setProofPayment] = useState<Pagamento | null>(null);
+  const [proofLoadError, setProofLoadError] = useState(false);
 
   useEffect(() => {
     fetchPayments();
@@ -111,6 +112,11 @@ export default function PagamentosPage() {
     return matchesSearch && matchesStatus;
   });
 
+  const openProof = (payment: Pagamento) => {
+    setProofLoadError(false);
+    setProofPayment(payment);
+  };
+
   // Exportar para CSV (Mock)
   const handleExportCSV = () => {
     const headers = "Estudante,Email,Plano,Valor,Data,Metodo,Estado\n";
@@ -168,6 +174,30 @@ export default function PagamentosPage() {
             </h3>
           </Card>
         </div>
+
+        {pendentesCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setStatusFilter("PENDING")}
+            className="flex w-full items-center justify-between gap-4 rounded-2xl border border-amber-400/25 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent p-4 text-left shadow-lg shadow-amber-950/10 transition-all hover:border-amber-400/40 hover:bg-amber-500/10"
+          >
+            <span className="flex min-w-0 items-center gap-3">
+              <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-400/15 text-amber-300">
+                <span className="material-symbols-outlined">notifications_active</span>
+                <span className="absolute -right-1 -top-1 h-3 w-3 animate-pulse rounded-full border-2 border-[#150b14] bg-amber-400" />
+              </span>
+              <span>
+                <span className="block text-sm font-bold text-amber-200">
+                  {pendentesCount === 1 ? "1 compra aguarda validação" : `${pendentesCount} compras aguardam validação`}
+                </span>
+                <span className="mt-0.5 block text-xs text-on-surface-variant">
+                  Abra o comprovativo antes de aprovar ou rejeitar o pagamento.
+                </span>
+              </span>
+            </span>
+            <span className="material-symbols-outlined shrink-0 text-amber-300">arrow_forward</span>
+          </button>
+        )}
 
         {/* Filtros */}
         <Card className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -235,7 +265,7 @@ export default function PagamentosPage() {
                         {p.proof_url ? (
                           <button
                             type="button"
-                            onClick={() => setProofPayment(p)}
+                            onClick={() => openProof(p)}
                             className="inline-flex items-center gap-1.5 rounded bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary transition-colors hover:bg-primary/20"
                           >
                             <span className="material-symbols-outlined text-base">receipt_long</span>
@@ -290,7 +320,12 @@ export default function PagamentosPage() {
           )}
         </Card>
 
-        <Dialog open={Boolean(proofPayment)} onOpenChange={(open) => !open && setProofPayment(null)}>
+        <Dialog open={Boolean(proofPayment)} onOpenChange={(open) => {
+          if (!open) {
+            setProofPayment(null);
+            setProofLoadError(false);
+          }
+        }}>
           <DialogContent onClose={() => setProofPayment(null)} className="max-w-4xl">
             <DialogHeader>
               <DialogTitle>Comprovativo de pagamento</DialogTitle>
@@ -299,12 +334,44 @@ export default function PagamentosPage() {
               </DialogDescription>
             </DialogHeader>
             {proofPayment && (
-              <div className="overflow-hidden rounded-xl border border-primary/15 bg-black/30">
-                <iframe
-                  src={`/api/admin/payments/${proofPayment.id}/proof`}
-                  title={`Comprovativo de ${proofPayment.student_name}`}
-                  className="h-[70vh] w-full bg-white"
-                />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-primary/10 bg-primary/5 px-4 py-3 text-xs">
+                  <span className="min-w-0 truncate text-on-surface-variant">
+                    Documento submetido em {proofPayment.date ? new Date(proofPayment.date).toLocaleString("pt-PT") : "data desconhecida"}
+                  </span>
+                  <a
+                    href={`/api/admin/payments/${proofPayment.id}/proof`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex shrink-0 items-center gap-1.5 font-bold text-primary hover:underline"
+                  >
+                    Abrir em nova aba
+                    <span className="material-symbols-outlined text-base">open_in_new</span>
+                  </a>
+                </div>
+
+                <div className="flex min-h-[420px] items-center justify-center overflow-hidden rounded-xl border border-primary/15 bg-black/40">
+                  {proofLoadError ? (
+                    <div className="max-w-sm p-8 text-center">
+                      <span className="material-symbols-outlined text-4xl text-red-300">broken_image</span>
+                      <p className="mt-3 text-sm font-bold text-on-surface">Não foi possível mostrar o comprovativo.</p>
+                      <p className="mt-1 text-xs text-on-surface-variant">Confirme as variáveis R2 e Supabase na Vercel ou tente abrir o documento numa nova aba.</p>
+                    </div>
+                  ) : proofPayment.proof_url.toLowerCase().endsWith(".pdf") ? (
+                    <iframe
+                      src={`/api/admin/payments/${proofPayment.id}/proof`}
+                      title={`Comprovativo de ${proofPayment.student_name}`}
+                      className="h-[70vh] w-full bg-white"
+                    />
+                  ) : (
+                    <img
+                      src={`/api/admin/payments/${proofPayment.id}/proof`}
+                      alt={`Comprovativo de pagamento de ${proofPayment.student_name}`}
+                      className="max-h-[70vh] w-full object-contain"
+                      onError={() => setProofLoadError(true)}
+                    />
+                  )}
+                </div>
               </div>
             )}
           </DialogContent>

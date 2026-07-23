@@ -42,8 +42,8 @@ export async function POST(request: Request) {
 
     admin = createAdminClient();
     const [{ data: profile, error: profileError }, { data: course, error: courseError }] = await Promise.all([
-      admin.from("profiles").select("id,status").eq("user_id", user.id).single(),
-      admin.from("courses").select("id,price_monthly,is_active").eq("id", courseId).single(),
+      admin.from("profiles").select("id,status,full_name").eq("user_id", user.id).single(),
+      admin.from("courses").select("id,name,price_monthly,is_active").eq("id", courseId).single(),
     ]);
 
     if (profileError || !profile || profile.status !== "active") {
@@ -89,6 +89,32 @@ export async function POST(request: Request) {
           payment_status: "PENDING",
         });
     if (enrollmentResult.error) throw enrollmentResult.error;
+
+    const { data: administrators, error: administratorsError } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("role", "ADMIN")
+      .eq("status", "active");
+    if (administratorsError) {
+      console.error("Error finding administrators for payment notification:", administratorsError);
+    } else if (administrators?.length) {
+      const { error: notificationError } = await admin.from("notifications").insert(
+        administrators.map((administrator) => ({
+          user_id: administrator.id,
+          type: "PAYMENT_SUBMITTED",
+          title: "Novo pagamento para validar",
+          content: `${profile.full_name || "Um estudante"} submeteu ${course.price_monthly} MT para ${course.name}.`,
+          metadata: {
+            payment_id: paymentId,
+            course_id: course.id,
+            href: "/admin/pagamentos",
+          },
+        }))
+      );
+      if (notificationError) {
+        console.error("Error creating payment notification:", notificationError);
+      }
+    }
 
     return NextResponse.json({ paymentId }, { status: 201 });
   } catch (error) {
