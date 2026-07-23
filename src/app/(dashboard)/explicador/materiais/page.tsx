@@ -20,6 +20,26 @@ type Material = {
   original_name: string | null;
 };
 
+type ApiResult = {
+  error?: string;
+  material?: Material;
+  uploadUrl?: string;
+  ok?: boolean;
+};
+
+async function readApiResult(response: Response): Promise<ApiResult> {
+  const body = await response.text();
+  if (!body.trim()) {
+    throw new Error(`O servidor respondeu sem dados (HTTP ${response.status}). Reinicie o servidor e tente novamente.`);
+  }
+
+  try {
+    return JSON.parse(body) as ApiResult;
+  } catch {
+    throw new Error(`O servidor devolveu uma resposta inválida (HTTP ${response.status}).`);
+  }
+}
+
 const contentTypes: Record<string, string> = {
   pdf: "application/pdf",
   epub: "application/epub+zip",
@@ -86,8 +106,11 @@ function TutorMaterialsContent() {
           accessLevel,
         }),
       });
-      const result = await response.json();
+      const result = await readApiResult(response);
       if (!response.ok) throw new Error(result.error || "Não foi possível preparar o upload");
+      if (!result.material?.id || !result.uploadUrl) {
+        throw new Error("A resposta de preparação do upload está incompleta.");
+      }
       materialId = result.material.id;
 
       const uploadResponse = await fetch(result.uploadUrl, {
@@ -114,10 +137,14 @@ function TutorMaterialsContent() {
 
   const handleDelete = async (material: Material) => {
     if (!window.confirm(`Eliminar “${material.title}”?`)) return;
-    const response = await fetch(`/api/materials/${material.id}`, { method: "DELETE" });
-    const result = await response.json();
-    if (!response.ok) { setError(result.error || "Não foi possível eliminar o material."); return; }
-    setMaterials((current) => current.filter((item) => item.id !== material.id));
+    try {
+      const response = await fetch(`/api/materials/${material.id}`, { method: "DELETE" });
+      const result = await readApiResult(response);
+      if (!response.ok) { setError(result.error || "Não foi possível eliminar o material."); return; }
+      setMaterials((current) => current.filter((item) => item.id !== material.id));
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Não foi possível eliminar o material.");
+    }
   };
 
   const visible = materials.filter((material) => filter === "TODOS" || material.course_id === filter);

@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { EmailMagicLinkForm } from "@/components/auth/email-magic-link-form";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -61,30 +60,34 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="glass-panel p-8 rounded-xl shadow-2xl relative overflow-hidden">
+    <div className="glass-panel relative overflow-hidden rounded-2xl border border-primary/10 p-7 shadow-2xl shadow-black/30 sm:p-8">
       {/* Interactive scanning line */}
       <div className="scanning-line opacity-25"></div>
+      <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-primary/10 blur-3xl" />
 
-      <h3 className="font-playfair text-2xl text-on-surface mb-2 font-bold uppercase">Entrar na Academia</h3>
-      <p className="text-xs text-on-surface-variant/70 mb-6 font-semibold">Entre ou crie a sua conta através de um link seguro enviado por email.</p>
-
-      <EmailMagicLinkForm onError={setError} />
-
-      <div className="flex items-center justify-between my-5">
-        <hr className="w-[35%] border-border/10" />
-        <span className="text-[10px] text-on-surface-variant/60 font-semibold uppercase">ou usar palavra-passe</span>
-        <hr className="w-[35%] border-border/10" />
+      <div className="relative mb-7 flex items-start gap-4">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary shadow-lg shadow-primary/5">
+          <span className="material-symbols-outlined" aria-hidden="true">lock</span>
+        </div>
+        <div>
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.22em] text-primary">Acesso seguro</p>
+          <h1 className="font-playfair text-2xl font-bold uppercase leading-tight text-on-surface">Entrar na Academia</h1>
+          <p className="mt-2 text-xs font-medium leading-relaxed text-on-surface-variant/70">
+            Introduza as credenciais da sua conta para continuar.
+          </p>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="relative space-y-5">
         <div>
           <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider block mb-1.5">
-            Email Institucional
+            Email
           </label>
           <Input
             type="email"
             required
-            placeholder="nome.sobrenome@uem.ac.mz"
+            autoComplete="email"
+            placeholder="seu.email@exemplo.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -102,6 +105,7 @@ export default function LoginPage() {
           <Input
             type="password"
             required
+            autoComplete="current-password"
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -109,16 +113,17 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <p className="text-xs text-red-500 font-semibold">{error}</p>
+          <p className="rounded-xl border border-red-500/20 bg-red-500/10 px-3.5 py-3 text-xs font-semibold text-red-300" role="alert">
+            {error}
+          </p>
         )}
 
-        <Button type="submit" variant="primary" isLoading={loading} className="w-full py-3 mt-2 font-bold uppercase tracking-wider">
+        <Button type="submit" variant="primary" isLoading={loading} className="mt-2 w-full py-3 font-bold uppercase tracking-wider shadow-lg shadow-primary/10">
           Entrar
         </Button>
-
       </form>
 
-      <div className="mt-6 text-center">
+      <div className="relative mt-7 border-t border-border/10 pt-5 text-center">
         <p className="text-xs text-on-surface-variant">
           Não tem uma conta?{" "}
           <Link href="/register" className="text-primary hover:underline font-bold">

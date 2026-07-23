@@ -27,19 +27,26 @@ const uploadSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const identity = await getRequestIdentity();
-  if (!identity) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
-
-  const parsed = uploadSchema.safeParse(await request.json());
-  if (!parsed.success) return NextResponse.json({ error: "Dados do material inválidos ou ficheiro acima de 50 MB" }, { status: 400 });
-  if (!allowedTypes.has(parsed.data.contentType)) {
-    return NextResponse.json({ error: "Formato não permitido. Use PDF, EPUB, DOCX, PPTX, XLSX ou ZIP" }, { status: 400 });
-  }
-  if (!(await canManageCourseMaterial(identity, parsed.data.courseId))) {
-    return NextResponse.json({ error: "Não autorizado para esta cadeira" }, { status: 403 });
-  }
-
   try {
+    const identity = await getRequestIdentity();
+    if (!identity) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+
+    let requestBody: unknown;
+    try {
+      requestBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: "O pedido de upload não contém JSON válido" }, { status: 400 });
+    }
+
+    const parsed = uploadSchema.safeParse(requestBody);
+    if (!parsed.success) return NextResponse.json({ error: "Dados do material inválidos ou ficheiro acima de 50 MB" }, { status: 400 });
+    if (!allowedTypes.has(parsed.data.contentType)) {
+      return NextResponse.json({ error: "Formato não permitido. Use PDF, EPUB, DOCX, PPTX, XLSX ou ZIP" }, { status: 400 });
+    }
+    if (!(await canManageCourseMaterial(identity, parsed.data.courseId))) {
+      return NextResponse.json({ error: "Não autorizado para esta cadeira" }, { status: 403 });
+    }
+
     const payload = parsed.data;
     const objectKey = createMaterialObjectKey(payload.courseId, payload.fileName);
     const uploadUrl = await createMaterialUploadUrl(objectKey, payload.contentType, payload.fileSize);
@@ -63,6 +70,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ material, uploadUrl }, { status: 201 });
   } catch (error) {
+    console.error("Error preparing R2 material upload:", error);
     return NextResponse.json({ error: error instanceof Error ? error.message : "Não foi possível preparar o upload" }, { status: 500 });
   }
 }
