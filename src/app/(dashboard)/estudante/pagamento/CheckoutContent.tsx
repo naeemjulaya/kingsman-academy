@@ -256,12 +256,12 @@ export default function CheckoutContent() {
                                             </span>
                                         </div>
                                     )}
-                                    <div className="mb-4 flex h-16 w-28 items-center justify-center overflow-hidden rounded-xl border border-black/5 bg-white p-1.5 shadow-sm">
+                                    <div className="mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-xl border border-white/10 shadow-md">
                                         <Image
                                             src="/payment-methods/mpesa.svg"
                                             alt="Logótipo oficial M-Pesa"
-                                            width={112}
-                                            height={64}
+                                            width={96}
+                                            height={96}
                                             className="h-full w-full object-contain"
                                         />
                                     </div>
@@ -283,12 +283,12 @@ export default function CheckoutContent() {
                                             </span>
                                         </div>
                                     )}
-                                    <div className="mb-4 flex h-16 w-28 items-center justify-center overflow-hidden rounded-xl border border-black/5 bg-white p-1.5 shadow-sm">
+                                    <div className="mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-xl border border-white/10 shadow-md">
                                         <Image
                                             src="/payment-methods/emola.svg"
                                             alt="Logótipo oficial e-Mola"
-                                            width={112}
-                                            height={64}
+                                            width={96}
+                                            height={96}
                                             className="h-full w-full object-contain"
                                         />
                                     </div>
