@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SelectInput } from "@/components/ui/select_input";
 import { createClient } from "@/lib/supabase/client";
-import { EmailMagicLinkForm } from "@/components/auth/email-magic-link-form";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -182,18 +181,32 @@ export default function RegisterPage() {
       {/* Multi-step Form Container */}
       <div className="w-full max-w-md glass-panel rounded-xl p-6 shadow-2xl relative overflow-hidden">
         <div className="scanning-line opacity-20"></div>
+        <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-primary/10 blur-3xl" />
 
-        <div className="relative z-10 mb-5">
-          <EmailMagicLinkForm onError={setError} />
-          <div className="mt-4 flex items-center gap-3">
-            <hr className="flex-1 border-border/10" />
-            <span className="text-[10px] uppercase tracking-wider text-on-surface-variant/60">ou preencher manualmente</span>
-            <hr className="flex-1 border-border/10" />
+        <div className="relative z-10 mb-6 flex items-start gap-4 border-b border-border/10 pb-5">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary shadow-lg shadow-primary/5">
+            <span className="material-symbols-outlined" aria-hidden="true">person_add</span>
           </div>
-          {error && currentStep !== 4 && <p className="mt-3 text-xs font-semibold text-red-400">{error}</p>}
+          <div>
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
+              Novo estudante
+            </p>
+            <h1 className="font-playfair text-xl font-bold uppercase leading-tight text-on-surface">
+              Criar uma conta
+            </h1>
+            <p className="mt-1.5 text-xs leading-relaxed text-on-surface-variant/70">
+              Preencha os seus dados e defina uma palavra-passe para entrar na plataforma.
+            </p>
+          </div>
         </div>
 
         <form onSubmit={(e) => e.preventDefault()} className="space-y-4 relative z-10">
+          {error && currentStep !== 4 && (
+            <p className="rounded-xl border border-red-500/20 bg-red-500/10 px-3.5 py-3 text-xs font-semibold text-red-300" role="alert">
+              {error}
+            </p>
+          )}
+
           {/* Step 1: Conta */}
           {currentStep === 1 && (
             <div className="space-y-4">
