@@ -62,16 +62,14 @@ export default function LessonPlayerPage() {
       // VERIFICAÇÃO CRÍTICA DE ACESSO (client-side, mas API faz verificação server-side)
 
       // 1. Busca a aula
-      const { data: lessonData, error: lessonError } = await supabase
-        .from("lessons")
-        .select(`
-          id, title, topic, description, duration, order_index, course_id,
-          courses:course_id (name)
-        `)
-        .eq("id", lessonId)
-        .single();
+      const lessonsResponse = await fetch(`/api/student/lessons?lessonId=${encodeURIComponent(lessonId)}`, {
+        cache: "no-store",
+      });
+      const lessonsResult = lessonsResponse.ok ? await lessonsResponse.json() : { lessons: [] };
+      const courseLessons = lessonsResult.lessons || [];
+      const lessonData = courseLessons.find((item: { id: string }) => item.id === lessonId);
 
-      if (lessonError || !lessonData) {
+      if (!lessonsResponse.ok || !lessonData) {
         router.push("/estudante/aulas");
         return;
       }
@@ -136,23 +134,16 @@ export default function LessonPlayerPage() {
       setMaterials(((materialsData || []) as Array<Material & { lesson_id: string | null }>).filter((material) => material.lesson_id === lessonId));
 
       // 6. Busca aulas adjacentes (anterior e próxima)
-      const { data: adjacent } = await supabase
-        .from("lessons")
-        .select("id, title, order_index")
-        .eq("course_id", lessonData.course_id)
-        .eq("is_active", true)
-        .order("order_index");
-
-      if (adjacent) {
-        const currentIndex = adjacent.findIndex(l => l.id === lessonId);
+      if (courseLessons.length) {
+        const currentIndex = courseLessons.findIndex((lesson: { id: string }) => lesson.id === lessonId);
         setAdjacentLessons({
           prev: currentIndex > 0 ? { 
-            id: adjacent[currentIndex - 1].id, 
-            title: adjacent[currentIndex - 1].title 
+            id: courseLessons[currentIndex - 1].id,
+            title: courseLessons[currentIndex - 1].title
           } : null,
-          next: currentIndex < adjacent.length - 1 ? { 
-            id: adjacent[currentIndex + 1].id, 
-            title: adjacent[currentIndex + 1].title 
+          next: currentIndex < courseLessons.length - 1 ? {
+            id: courseLessons[currentIndex + 1].id,
+            title: courseLessons[currentIndex + 1].title
           } : null,
         });
       }

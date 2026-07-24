@@ -61,13 +61,11 @@ export default function CourseDetail({ params }: PageProps) {
         setTutors((tutorData as TutorProfile[] | null) ?? []);
         
         // 3. Fetch Lessons
-        const { data: lessonsData } = await supabase
-          .from('lessons')
-          .select('*')
-          .eq('course_id', id)
-          .eq('is_active', true)
-          .order('order_index');
-        if (lessonsData) setLessons(lessonsData);
+        const lessonsResponse = await fetch(`/api/student/lessons?courseId=${encodeURIComponent(id)}`, {
+          cache: "no-store",
+        });
+        const lessonsResult = lessonsResponse.ok ? await lessonsResponse.json() : { lessons: [] };
+        setLessons(lessonsResult.lessons || []);
         
         // 4. Fetch Materials
         const { data: materialsData } = await supabase

@@ -53,6 +53,12 @@ interface DashboardNotification {
   created_at: string;
 }
 
+interface DashboardLesson {
+  id: string;
+  title: string;
+  course_id: string;
+}
+
 export default function StudentDashboard() {
   const { user } = useAuth();
   const supabase = createClient();
@@ -89,6 +95,9 @@ export default function StudentDashboard() {
       const progressResponse = await fetch("/api/student/progress", { cache: "no-store" });
       const progressResult = await progressResponse.json();
       const studentProgress: StudentProgress[] = progressResponse.ok ? progressResult.progress || [] : [];
+      const lessonsResponse = await fetch("/api/student/lessons", { cache: "no-store" });
+      const lessonsResult = lessonsResponse.ok ? await lessonsResponse.json() : { lessons: [] };
+      const studentLessons: DashboardLesson[] = lessonsResult.lessons || [];
       
       // Calculate Next Payment
       let nextPaymentAmount = 0;
@@ -117,11 +126,7 @@ export default function StudentDashboard() {
         const cId = enc.course_id;
         const cData = Array.isArray(enc.courses) ? enc.courses[0] : enc.courses;
         
-        // Fetch total lessons
-        const { count: totalLessons } = await supabase
-          .from('lessons')
-          .select('id', { count: 'exact', head: true })
-          .eq('course_id', cId);
+        const totalLessons = studentLessons.filter((lesson) => lesson.course_id === cId).length;
           
         const completedLessons = studentProgress.filter(
           (progress) => progress.courseId === cId && progress.progressPercent >= 100
@@ -170,34 +175,24 @@ export default function StudentDashboard() {
       const enrolledCourseIds = activeEnrollments.map(e => e.course_id);
       
       if (enrolledCourseIds.length > 0) {
-        // Fetch all lessons for these courses
-        const { data: lessons } = await supabase
-          .from('lessons')
-          .select('id, title, course_id, created_at')
-          .in('course_id', enrolledCourseIds)
-          .order('order_index')
-          .limit(10);
-          
         // Fetch completions to filter them out
         const completedIds = new Set(
           studentProgress.filter((progress) => progress.progressPercent >= 100).map((progress) => progress.lessonId)
         );
         
-        if (lessons) {
-          const upcoming = lessons
-            .filter(l => !completedIds.has(l.id))
-            .slice(0, 3)
-            .map(l => {
-              const cName = coursesResult.find(c => c.id === l.course_id)?.name || "Cadeira";
-              return {
-                id: l.id,
-                title: l.title,
-                course_name: cName,
-                time_label: "Disponível"
-              };
-            });
-          setUpcomingLessons(upcoming);
-        }
+        const upcoming = studentLessons
+          .filter((lesson) => !completedIds.has(lesson.id))
+          .slice(0, 3)
+          .map((lesson) => {
+            const courseName = coursesResult.find((course) => course.id === lesson.course_id)?.name || "Cadeira";
+            return {
+              id: lesson.id,
+              title: lesson.title,
+              course_name: courseName,
+              time_label: "Disponível"
+            };
+          });
+        setUpcomingLessons(upcoming);
       }
 
     } catch (error) {

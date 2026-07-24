@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -36,7 +35,6 @@ interface StudentProgress {
 export default function StudentLessonsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const supabase = createClient();
 
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,18 +67,11 @@ export default function StudentLessonsPage() {
         return;
       }
 
-      const courseIds = enrollments.map(e => e.course_id);
-
       // Busca aulas dessas cadeiras
-      const { data: lessonsData } = await supabase
-        .from("lessons")
-        .select(`
-          id, title, topic, duration, order_index, youtube_link, course_id,
-          courses:course_id (name)
-        `)
-        .in("course_id", courseIds)
-        .eq("is_active", true)
-        .order("order_index");
+      const lessonsResponse = await fetch("/api/student/lessons", { cache: "no-store" });
+      const lessonsResult = await lessonsResponse.json();
+      if (!lessonsResponse.ok) throw new Error(lessonsResult.error || "Não foi possível carregar as aulas");
+      const lessonsData = lessonsResult.lessons || [];
 
       // Busca progresso do estudante
       const progressResponse = await fetch("/api/student/progress", { cache: "no-store" });
@@ -93,18 +84,21 @@ export default function StudentLessonsPage() {
       const completionMap = new Map();
       completions?.forEach(c => completionMap.set(c.lesson_id, c.progress_percent));
 
-      const formattedLessons: Lesson[] = lessonsData?.map((lesson: any) => ({
+      const formattedLessons: Lesson[] = lessonsData.map((lesson: any) => {
+        const course = Array.isArray(lesson.courses) ? lesson.courses[0] : lesson.courses;
+        return {
         id: lesson.id,
         title: lesson.title,
         topic: lesson.topic,
         duration: lesson.duration,
         order_index: lesson.order_index,
-        course_name: lesson.courses?.name || "",
+        course_name: course?.name || "",
         course_id: lesson.course_id,
-        youtube_link: lesson.youtube_link,
+        youtube_link: "",
         completed: (completionMap.get(lesson.id) || 0) >= 100,
         progress_percent: completionMap.get(lesson.id) || 0,
-      })) || [];
+      };
+      });
 
       setLessons(formattedLessons);
     } catch (error) {
