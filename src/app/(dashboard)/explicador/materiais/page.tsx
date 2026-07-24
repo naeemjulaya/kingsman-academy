@@ -63,9 +63,7 @@ function TutorMaterialsContent() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    if (!courseId && courses[0]?.id) setCourseId(courses[0].id);
-  }, [courseId, courses]);
+  const selectedCourse = courses.find((course) => course.id === courseId);
 
   const load = useCallback(async () => {
     const courseIds = courses.map((course) => course.id);
@@ -86,7 +84,8 @@ function TutorMaterialsContent() {
 
   const handleUpload = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!file || !courseId) return;
+    if (!file || !courseId || !selectedCourse) return;
+    if (!window.confirm(`Publicar “${title.trim()}” na cadeira “${selectedCourse.name}”?`)) return;
     setUploading(true);
     setError("");
     setMessage("");
@@ -123,7 +122,7 @@ function TutorMaterialsContent() {
       setTitle("");
       setFile(null);
       setAccessLevel("FREE");
-      setMessage("Material enviado com sucesso.");
+      setMessage(`Material publicado em ${selectedCourse.name} com sucesso.`);
       const fileInput = document.getElementById("material-file") as HTMLInputElement | null;
       if (fileInput) fileInput.value = "";
       await load();
@@ -183,9 +182,36 @@ function TutorMaterialsContent() {
                 <Input id="material-file" required type="file" accept=".pdf,.epub,.docx,.pptx,.xlsx,.zip" onChange={(event) => setFile(event.target.files?.[0] || null)} />
               </Field>
             </div>
+            {selectedCourse ? (
+              <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <span className="material-symbols-outlined text-primary">check_circle</span>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-primary">Cadeira selecionada</p>
+                  <p className="mt-1 text-sm font-semibold text-on-surface">{selectedCourse.name}</p>
+                  <p className="mt-1 text-xs text-on-surface-variant">
+                    Confirme este nome antes de publicar. O material aparecerá apenas nesta cadeira.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+                <span className="material-symbols-outlined text-amber-400">info</span>
+                <p className="text-xs leading-relaxed text-on-surface-variant">
+                  Selecione explicitamente a cadeira onde o material deve aparecer.
+                </p>
+              </div>
+            )}
             {error && <p className="text-sm text-red-300" role="alert">{error}</p>}
             {message && <p className="text-sm text-emerald-300" role="status">{message}</p>}
-            <Button type="submit" variant="primary" isLoading={uploading} disabled={!file || !courseId} className="font-bold uppercase">Enviar para o R2</Button>
+            <Button
+              type="submit"
+              variant="primary"
+              isLoading={uploading}
+              disabled={!file || !selectedCourse}
+              className="font-bold uppercase"
+            >
+              {selectedCourse ? `Publicar em ${selectedCourse.name}` : "Selecione uma cadeira"}
+            </Button>
           </form>
         </Card>
 
