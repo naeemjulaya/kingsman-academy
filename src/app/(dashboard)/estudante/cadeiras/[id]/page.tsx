@@ -22,6 +22,14 @@ interface TutorProfile {
   avatar_url: string | null;
 }
 
+interface CourseResource {
+  course_id: string;
+  tutor_id: string | null;
+  tutor_name: string | null;
+  whatsapp_group_url: string | null;
+  has_paid_access: boolean;
+}
+
 export default function CourseDetail({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
@@ -35,11 +43,25 @@ export default function CourseDetail({ params }: PageProps) {
   const [tutors, setTutors] = useState<TutorProfile[]>([]);
   const [lessons, setLessons] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
+  const [resources, setResources] = useState<CourseResource[]>([]);
   const [isEnrolledAndPaid, setIsEnrolledAndPaid] = useState(false);
 
   useEffect(() => {
     if (id) fetchCourseData();
   }, [id, user]);
+
+  useEffect(() => {
+    const syncTabWithHash = () => {
+      const requestedTab = window.location.hash.replace("#", "");
+      if (["aulas", "materiais", "recursos", "explicadores", "avaliacoes"].includes(requestedTab)) {
+        setActiveTab(requestedTab);
+      }
+    };
+
+    syncTabWithHash();
+    window.addEventListener("hashchange", syncTabWithHash);
+    return () => window.removeEventListener("hashchange", syncTabWithHash);
+  }, []);
 
   const fetchCourseData = async () => {
     setLoading(true);
@@ -71,6 +93,13 @@ export default function CourseDetail({ params }: PageProps) {
         const { data: materialsData } = await supabase
           .rpc('get_course_materials', { p_course_id: id });
         if (materialsData) setMaterials(materialsData);
+
+        const { data: resourcesData, error: resourcesError } = await supabase
+          .rpc("get_student_course_resources");
+        if (resourcesError) throw resourcesError;
+        setResources(
+          ((resourcesData || []) as CourseResource[]).filter((resource) => resource.course_id === id)
+        );
         
         // 5. Check Enrollment if user is logged in
         if (user) {
@@ -154,10 +183,17 @@ export default function CourseDetail({ params }: PageProps) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Course Details Tab Area */}
         <div className="lg:col-span-8 space-y-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => {
+              setActiveTab(value);
+              window.history.replaceState(null, "", `#${value}`);
+            }}
+          >
             <TabsList className="w-full justify-start overflow-x-auto">
               <TabsTrigger value="aulas">Aulas ({lessons.length})</TabsTrigger>
               <TabsTrigger value="materiais">Materiais ({materials.length})</TabsTrigger>
+              <TabsTrigger value="recursos">Recursos</TabsTrigger>
               <TabsTrigger value="explicadores">Explicadores ({tutors.length})</TabsTrigger>
               <TabsTrigger value="avaliacoes">Avaliações</TabsTrigger>
             </TabsList>
@@ -252,6 +288,75 @@ export default function CourseDetail({ params }: PageProps) {
                     </div>
                   ))}
                 </div>
+              </Card>
+            </TabsContent>
+
+            {/* Recursos Tab */}
+            <TabsContent value="recursos" className="mt-6">
+              <Card className="p-6">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
+                    <span className="material-symbols-outlined">forum</span>
+                  </div>
+                  <div>
+                    <h3 className="font-playfair text-lg font-bold">Grupos e links da cadeira</h3>
+                    <p className="mt-1 text-sm text-on-surface-variant">
+                      Encontre aqui os canais de apoio partilhados pelos explicadores desta cadeira.
+                    </p>
+                  </div>
+                </div>
+
+                {!isEnrolledAndPaid ? (
+                  <div className="mt-6 flex items-start gap-3 rounded-xl border border-amber-500/15 bg-amber-500/5 p-5">
+                    <span className="material-symbols-outlined text-amber-400">lock</span>
+                    <div>
+                      <p className="text-sm font-bold text-on-surface">Recursos reservados aos estudantes inscritos</p>
+                      <p className="mt-1 text-xs leading-relaxed text-on-surface-variant">
+                        O grupo de WhatsApp será desbloqueado automaticamente depois da confirmação do pagamento.
+                      </p>
+                    </div>
+                  </div>
+                ) : resources.length === 0 ? (
+                  <p className="mt-6 rounded-xl bg-surface-container-low p-5 text-sm text-on-surface-variant">
+                    Ainda não existem links configurados para esta cadeira.
+                  </p>
+                ) : (
+                  <div className="mt-6 space-y-3">
+                    {resources.map((resource, index) => (
+                      <div
+                        key={resource.tutor_id || index}
+                        className="flex flex-col gap-4 rounded-xl border border-white/5 bg-surface-container-low p-4 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400">
+                            <span className="material-symbols-outlined">chat</span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-on-surface">Grupo de WhatsApp</p>
+                            <p className="text-xs text-on-surface-variant">
+                              {resource.tutor_name || "Explicador da cadeira"}
+                            </p>
+                          </div>
+                        </div>
+                        {resource.whatsapp_group_url ? (
+                          <a
+                            href={resource.whatsapp_group_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500/10 px-4 py-2.5 text-sm font-bold text-emerald-300 transition-colors hover:bg-emerald-500/20"
+                          >
+                            Entrar no grupo
+                            <span className="material-symbols-outlined text-[17px]">open_in_new</span>
+                          </a>
+                        ) : (
+                          <span className="text-xs font-semibold text-on-surface-variant">
+                            Ainda não configurado
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </Card>
             </TabsContent>
 
