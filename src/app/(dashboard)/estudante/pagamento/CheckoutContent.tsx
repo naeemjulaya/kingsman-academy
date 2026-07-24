@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -255,8 +256,14 @@ export default function CheckoutContent() {
                                             </span>
                                         </div>
                                     )}
-                                    <div className="w-12 h-12 bg-[#E61C23] rounded-lg flex items-center justify-center mb-4 text-white font-bold text-xl select-none">
-                                        M
+                                    <div className="mb-4 flex h-16 w-28 items-center justify-center overflow-hidden rounded-xl border border-black/5 bg-white p-1.5 shadow-sm">
+                                        <Image
+                                            src="/payment-methods/mpesa.svg"
+                                            alt="Logótipo oficial M-Pesa"
+                                            width={112}
+                                            height={64}
+                                            className="h-full w-full object-contain"
+                                        />
                                     </div>
                                     <div>
                                         <p className="font-playfair text-lg text-on-surface font-bold">M-Pesa</p>
@@ -276,8 +283,14 @@ export default function CheckoutContent() {
                                             </span>
                                         </div>
                                     )}
-                                    <div className="w-12 h-12 bg-[#F37021] rounded-lg flex items-center justify-center mb-4 text-white font-bold text-xl select-none">
-                                        e
+                                    <div className="mb-4 flex h-16 w-28 items-center justify-center overflow-hidden rounded-xl border border-black/5 bg-white p-1.5 shadow-sm">
+                                        <Image
+                                            src="/payment-methods/emola.svg"
+                                            alt="Logótipo oficial e-Mola"
+                                            width={112}
+                                            height={64}
+                                            className="h-full w-full object-contain"
+                                        />
                                     </div>
                                     <div>
                                         <p className="font-playfair text-lg text-on-surface font-bold">e-Mola</p>
