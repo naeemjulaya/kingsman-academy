@@ -290,7 +290,7 @@ export default function LessonPlayerPage() {
                 {lesson.duration && (
                   <span className="text-[#808080] text-sm flex items-center gap-1">
                     <span className="material-symbols-outlined text-[16px]">schedule</span>
-                    {Math.floor(lesson.duration / 60)} minutos
+                    {lesson.duration} minutos
                   </span>
                 )}
               </div>
