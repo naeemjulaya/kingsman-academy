@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SocialLinks } from "@/components/social-links";
@@ -139,13 +139,12 @@ export default function LandingPage() {
     .slice(0, 6), [catalog.courses]);
 
   const featuredTutors = useMemo(() => [...catalog.tutors]
-    .filter((tutor) => tutor.avatar_url || tutor.bio)
     .sort((a, b) => {
       const aIndex = featuredTutorOrder.indexOf(a.full_name);
       const bIndex = featuredTutorOrder.indexOf(b.full_name);
-      return (aIndex < 0 ? 99 : aIndex) - (bIndex < 0 ? 99 : bIndex);
-    })
-    .slice(0, 4), [catalog.tutors]);
+      const orderDifference = (aIndex < 0 ? 99 : aIndex) - (bIndex < 0 ? 99 : bIndex);
+      return orderDifference || a.full_name.localeCompare(b.full_name, "pt");
+    }), [catalog.tutors]);
 
   const highlights = [
     {
@@ -161,6 +160,52 @@ export default function LandingPage() {
   ];
 
   const [activeHighlight, setActiveHighlight] = useState(0);
+  const [activeTutorIndex, setActiveTutorIndex] = useState(0);
+  const [tutorTransitioning, setTutorTransitioning] = useState(false);
+  const tutorTransitionTimer = useRef<number | null>(null);
+  const activeTutor = featuredTutors[activeTutorIndex] || featuredTutors[0];
+
+  const activeTutorCourses = useMemo(() => {
+    if (!activeTutor) return [];
+    return catalog.courses
+      .filter((course) => course.tutors.some((tutor) => tutor.id === activeTutor.id))
+      .map((course) => course.name);
+  }, [activeTutor, catalog.courses]);
+
+  const changeTutor = useCallback((nextIndex: number) => {
+    if (featuredTutors.length <= 1 || tutorTransitioning) return;
+    const normalizedIndex = (nextIndex + featuredTutors.length) % featuredTutors.length;
+    if (normalizedIndex === activeTutorIndex) return;
+
+    setTutorTransitioning(true);
+    if (tutorTransitionTimer.current) window.clearTimeout(tutorTransitionTimer.current);
+    tutorTransitionTimer.current = window.setTimeout(() => {
+      setActiveTutorIndex(normalizedIndex);
+      setTutorTransitioning(false);
+    }, 260);
+  }, [activeTutorIndex, featuredTutors.length, tutorTransitioning]);
+
+  useEffect(() => {
+    if (activeTutorIndex >= featuredTutors.length) setActiveTutorIndex(0);
+  }, [activeTutorIndex, featuredTutors.length]);
+
+  useEffect(() => {
+    if (
+      featuredTutors.length <= 1 ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) return;
+
+    const interval = window.setInterval(() => {
+      changeTutor(activeTutorIndex + 1);
+    }, 6500);
+    return () => window.clearInterval(interval);
+  }, [activeTutorIndex, changeTutor, featuredTutors.length]);
+
+  useEffect(() => {
+    return () => {
+      if (tutorTransitionTimer.current) window.clearTimeout(tutorTransitionTimer.current);
+    };
+  }, []);
 
   return (
     <div className="landing-page bg-[#0A0A0A] text-[#f2dceb] font-sans selection:bg-primary selection:text-black">
@@ -307,50 +352,144 @@ export default function LandingPage() {
 
         {/* SEÇÃO EXPLICADORES */}
         <section className="py-20 max-w-[1440px] mx-auto px-6 md:px-12" id="explicadores" data-landing-reveal>
-          <h2 className="font-playfair text-3xl md:text-4xl text-on-surface font-bold mb-10 text-center uppercase tracking-tight">
-            O Nosso <span className="text-primary italic">Corpo Docente</span> de Elite
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-            {featuredTutors[0] && <div className="md:col-span-2 glass-panel landing-card landing-card-glow p-6 rounded-xl overflow-hidden group flex flex-col justify-between">
-              <div>
-                <div className="w-full h-48 rounded-lg overflow-hidden mb-6 border border-primary/10">
-                  <img 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                    src={featuredTutors[0].avatar_url || ""}
-                    alt={featuredTutors[0].full_name}
-                  />
-                </div>
-                <h3 className="font-playfair text-2xl text-on-surface font-bold">{featuredTutors[0].full_name}</h3>
-                <p className="text-primary text-xs font-bold uppercase tracking-widest mb-3 mt-1">
-                  Explicador de Excelência
-                </p>
-                <p className="text-on-surface-variant text-sm leading-relaxed mb-6">
-                  {featuredTutors[0].bio}
-                </p>
+          <div className="mb-10 flex flex-col items-center justify-between gap-5 text-center lg:flex-row lg:text-left">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-widest text-primary">
+                {featuredTutors.length} explicadores
+              </span>
+              <h2 className="mt-1 font-playfair text-3xl font-bold uppercase tracking-tight text-on-surface md:text-4xl">
+                O Nosso <span className="text-primary italic">Corpo Docente</span> de Elite
+              </h2>
+            </div>
+            {featuredTutors.length > 1 && (
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => changeTutor(activeTutorIndex - 1)}
+                  aria-label="Ver explicador anterior"
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-primary/25 bg-primary/5 text-primary transition-all hover:border-primary hover:bg-primary/15"
+                >
+                  <span className="material-symbols-outlined">arrow_back</span>
+                </button>
+                <span className="min-w-16 text-center text-xs font-bold tracking-wider text-on-surface-variant">
+                  {String(activeTutorIndex + 1).padStart(2, "0")} / {String(featuredTutors.length).padStart(2, "0")}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => changeTutor(activeTutorIndex + 1)}
+                  aria-label="Ver próximo explicador"
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-primary/25 bg-primary/5 text-primary transition-all hover:border-primary hover:bg-primary/15"
+                >
+                  <span className="material-symbols-outlined">arrow_forward</span>
+                </button>
               </div>
-              <div className="flex items-center gap-2 border-t border-white/5 pt-4 text-xs text-on-surface-variant/80 font-semibold">
-                <span className="material-symbols-outlined text-primary text-base">school</span>
-                <span>{featuredTutors[0].university || "Universidade Eduardo Mondlane"}</span>
-              </div>
-            </div>}
+            )}
+          </div>
 
-            {/* Next 3 grid items */}
-            {featuredTutors.slice(1, 4).map((tutor) => (
-              <div key={tutor.id} className="glass-panel landing-card p-6 rounded-xl text-center flex flex-col items-center justify-between group">
-                <div className="flex flex-col items-center">
-                  <div className="w-20 h-20 rounded-full border-2 border-primary/40 p-1 mb-4 group-hover:border-primary transition-colors">
-                    <img className="w-full h-full object-cover rounded-full" src={tutor.avatar_url || ""} alt={tutor.full_name} />
-                  </div>
-                  <h4 className="font-playfair text-lg text-on-surface font-bold">{tutor.full_name}</h4>
-                  <span className="text-primary/70 text-[10px] font-bold uppercase tracking-wider mt-1">
-                    Explicador
+          {activeTutor && (
+            <div className="glass-panel landing-card-glow relative overflow-hidden rounded-2xl border border-primary/10">
+              <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+              <div
+                className={`relative grid min-h-[430px] grid-cols-1 transition-all duration-300 ease-out lg:grid-cols-12 ${
+                  tutorTransitioning
+                    ? "translate-x-3 scale-[0.99] opacity-0"
+                    : "translate-x-0 scale-100 opacity-100"
+                }`}
+              >
+                <div className="relative min-h-80 overflow-hidden lg:col-span-5 lg:min-h-full">
+                  {activeTutor.avatar_url ? (
+                    <img
+                      src={activeTutor.avatar_url}
+                      alt={activeTutor.full_name}
+                      className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-700 hover:scale-[1.03]"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/20 to-[#1a0a1a]">
+                      <span className="font-playfair text-8xl font-bold text-primary">
+                        {activeTutor.full_name.charAt(0)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#120812] via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-[#120812]/30" />
+                  <span className="absolute bottom-5 left-5 rounded-full border border-white/10 bg-black/50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white backdrop-blur-md">
+                    Explicador Kingsman
                   </span>
                 </div>
-                <div className="w-full border-t border-white/5 pt-3 mt-6 text-[11px] text-on-surface-variant/70">
-                  <p className="line-clamp-4 leading-relaxed">{tutor.bio}</p>
+
+                <div className="flex flex-col justify-center p-7 md:p-10 lg:col-span-7 lg:p-12">
+                  <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary">
+                    Em destaque
+                  </p>
+                  <h3 className="mt-3 font-playfair text-3xl font-bold text-on-surface md:text-4xl">
+                    {activeTutor.full_name}
+                  </h3>
+                  <div className="mt-3 flex items-center gap-2 text-sm font-semibold text-on-surface-variant">
+                    <span className="material-symbols-outlined text-lg text-primary">school</span>
+                    <span>{activeTutor.university || "Kingsman Academy"}</span>
+                  </div>
+                  <p className="mt-7 text-sm leading-7 text-on-surface-variant md:text-base">
+                    {activeTutor.bio || "Perfil profissional em atualização."}
+                  </p>
+
+                  {activeTutorCourses.length > 0 && (
+                    <div className="mt-7">
+                      <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">
+                        Cadeiras lecionadas
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {activeTutorCourses.map((course) => (
+                          <span
+                            key={course}
+                            className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary"
+                          >
+                            {course}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            ))}
+            </div>
+          )}
+
+          <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {featuredTutors.map((tutor, index) => {
+              const selected = index === activeTutorIndex;
+              return (
+                <button
+                  type="button"
+                  key={tutor.id}
+                  onClick={() => changeTutor(index)}
+                  aria-pressed={selected}
+                  className={`group flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-all duration-300 ${
+                    selected
+                      ? "border-primary bg-primary/10 shadow-[0_0_20px_rgba(255,72,255,0.08)]"
+                      : "border-white/5 bg-white/[0.02] hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5"
+                  }`}
+                >
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-primary/25 bg-primary/10">
+                    {tutor.avatar_url ? (
+                      <img
+                        src={tutor.avatar_url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="font-bold text-primary">{tutor.full_name.charAt(0)}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`truncate text-sm font-bold ${selected ? "text-primary" : "text-on-surface"}`}>
+                      {tutor.full_name}
+                    </p>
+                    <p className="mt-0.5 truncate text-[10px] uppercase tracking-wider text-on-surface-variant/60">
+                      Ver perfil
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </section>
 
