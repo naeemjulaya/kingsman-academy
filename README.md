@@ -37,7 +37,7 @@ As funções administrativas voltam a validar o perfil `ADMIN` na base de dados;
 
 ## YouTube
 
-O player usa links embed e a rota `/api/lessons/[id]/video`, que valida sessão, matrícula ativa e pagamento confirmado. A `YOUTUBE_API_KEY` é opcional e só será necessária caso se use a YouTube Data API v3 para metadados ou gestão do canal.
+O player usa links embed e a rota `/api/lessons/[id]/video`. Aulas `PUBLIC` ficam disponíveis a estudantes autenticados; aulas `PRIVATE` exigem matrícula ativa e pagamento confirmado. A `YOUTUBE_API_KEY` é opcional e só será necessária caso se use a YouTube Data API v3 para metadados ou gestão do canal.
 
 ## Materiais no Cloudflare R2
 

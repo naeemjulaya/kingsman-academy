@@ -21,6 +21,7 @@ interface VideoAula {
   published_at: string;
   order_index: number;
   is_active: boolean;
+  access_level: "PUBLIC" | "PRIVATE";
 }
 
 interface CourseOption {
@@ -45,7 +46,8 @@ export default function VideosPage() {
     duration: 30,
     youtube_link: "",
     order_index: 1,
-    is_active: true
+    is_active: true,
+    access_level: "PUBLIC",
   });
 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -76,6 +78,7 @@ export default function VideosPage() {
           duration,
           order_index,
           is_active,
+          access_level,
           created_at,
           courses:course_id(name)
         `)
@@ -111,7 +114,8 @@ export default function VideosPage() {
             youtube_link: l.youtube_link || "",
             published_at: l.created_at || "",
             order_index: l.order_index || 0,
-            is_active: l.is_active
+            is_active: l.is_active,
+            access_level: l.access_level || "PUBLIC",
           };
         })
       );
@@ -131,7 +135,8 @@ export default function VideosPage() {
       duration: 30,
       youtube_link: "",
       order_index: videos.length + 1,
-      is_active: true
+      is_active: true,
+      access_level: "PUBLIC",
     });
     setIsEdit(false);
     setIsOpen(true);
@@ -157,6 +162,7 @@ export default function VideosPage() {
             youtube_link: selectedVideo.youtube_link,
             order_index: selectedVideo.order_index,
             is_active: selectedVideo.is_active,
+            access_level: selectedVideo.access_level || "PUBLIC",
             topic: "Aula" // Default topic required by schema
           })
           .eq("id", selectedVideo.id);
@@ -173,6 +179,7 @@ export default function VideosPage() {
             youtube_link: selectedVideo.youtube_link,
             order_index: selectedVideo.order_index,
             is_active: selectedVideo.is_active,
+            access_level: selectedVideo.access_level || "PUBLIC",
             topic: "Aula" // Default topic
           });
 
@@ -272,6 +279,7 @@ export default function VideosPage() {
                     <TableHead>Explicador</TableHead>
                     <TableHead>Duração</TableHead>
                     <TableHead>Publicação</TableHead>
+                    <TableHead>Acesso</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -285,6 +293,11 @@ export default function VideosPage() {
                       <TableCell className="font-medium">{v.tutor_name}</TableCell>
                       <TableCell className="font-semibold text-on-surface-variant">{v.duration} min</TableCell>
                       <TableCell>{v.published_at ? new Date(v.published_at).toLocaleDateString("pt-PT") : "N/D"}</TableCell>
+                      <TableCell>
+                        <Badge variant={v.access_level === "PUBLIC" ? "success" : "warning"}>
+                          {v.access_level === "PUBLIC" ? "Pública" : "Só inscritos"}
+                        </Badge>
+                      </TableCell>
                       <TableCell>
                         <Badge variant={v.is_active ? "success" : "danger"}>
                           {v.is_active ? "Ativo" : "Inativo"}
@@ -388,6 +401,23 @@ export default function VideosPage() {
                     <option value="inativo">Oculto</option>
                   </Select>
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Acesso à Aula</label>
+                <Select
+                  value={selectedVideo.access_level || "PUBLIC"}
+                  onChange={(e) => setSelectedVideo({
+                    ...selectedVideo,
+                    access_level: e.target.value as "PUBLIC" | "PRIVATE",
+                  })}
+                >
+                  <option value="PUBLIC">Pública — disponível mesmo sem inscrição</option>
+                  <option value="PRIVATE">Privada — somente estudantes inscritos e pagos</option>
+                </Select>
+                <p className="text-[11px] leading-relaxed text-on-surface-variant/70">
+                  A opção privada protege também o link do vídeo no servidor.
+                </p>
               </div>
 
               <div className="space-y-1.5">

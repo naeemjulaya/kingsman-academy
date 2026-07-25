@@ -7,8 +7,8 @@ export const runtime = "nodejs";
 
 const idSchema = z.string().uuid();
 const lessonFields = `
-  id,title,topic,description,duration,order_index,course_id,
-  courses:course_id(name)
+  id,title,topic,description,duration,order_index,course_id,access_level,
+  courses:course_id(id,name,department,price_monthly)
 `;
 
 export async function GET(request: Request) {
@@ -24,44 +24,55 @@ export async function GET(request: Request) {
     }
 
     const admin = createAdminClient();
-    let selectedCourseIds: string[] = [];
-
     if (lessonId) {
       const { data: requestedLesson, error } = await admin
         .from("lessons")
-        .select("course_id")
+        .select("course_id,access_level")
         .eq("id", lessonId)
         .eq("is_active", true)
         .single();
       if (error || !requestedLesson) return NextResponse.json({ error: "Aula não encontrada" }, { status: 404 });
-      if (!(await hasPaidCourseAccess(identity, requestedLesson.course_id))) {
+      if (
+        requestedLesson.access_level === "PRIVATE" &&
+        !(await hasPaidCourseAccess(identity, requestedLesson.course_id))
+      ) {
         return NextResponse.json({ error: "Acesso negado. Inscrição necessária." }, { status: 403 });
       }
-      selectedCourseIds = [requestedLesson.course_id];
-    } else if (courseId) {
-      selectedCourseIds = [courseId];
-    } else {
-      const { data: enrollments, error } = await admin
+    }
+
+    let paidCourseIds: string[] = [];
+    if (!lessonId && !courseId && identity.role === "ESTUDANTE") {
+      const { data: enrollments, error: enrollmentError } = await admin
         .from("enrollments")
         .select("course_id,end_date")
         .eq("student_id", identity.profileId)
         .eq("status", "ACTIVE")
         .eq("payment_status", "CONFIRMED");
-      if (error) throw error;
-      selectedCourseIds = (enrollments || [])
+      if (enrollmentError) throw enrollmentError;
+      paidCourseIds = (enrollments || [])
         .filter((enrollment) => !enrollment.end_date || new Date(enrollment.end_date) > new Date())
         .map((enrollment) => enrollment.course_id);
     }
 
-    if (!selectedCourseIds.length) {
-      return NextResponse.json({ lessons: [] }, { headers: { "Cache-Control": "private, no-store" } });
-    }
-
-    const { data, error } = await admin
+    let query = admin
       .from("lessons")
       .select(lessonFields)
-      .in("course_id", selectedCourseIds)
-      .eq("is_active", true)
+      .eq("is_active", true);
+
+    if (lessonId) {
+      query = query.eq("id", lessonId);
+    } else if (courseId) {
+      query = query.eq("course_id", courseId);
+      if (!(await hasPaidCourseAccess(identity, courseId))) {
+        query = query.eq("access_level", "PUBLIC");
+      }
+    } else if (paidCourseIds.length) {
+      query = query.or(`access_level.eq.PUBLIC,course_id.in.(${paidCourseIds.join(",")})`);
+    } else {
+      query = query.eq("access_level", "PUBLIC");
+    }
+
+    const { data, error } = await query
       .order("course_id")
       .order("order_index");
     if (error) throw error;

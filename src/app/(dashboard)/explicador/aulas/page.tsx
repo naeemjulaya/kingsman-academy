@@ -26,6 +26,7 @@ type Lesson = {
   duration: number | null;
   order_index: number;
   is_active: boolean;
+  access_level: "PUBLIC" | "PRIVATE";
   created_at: string;
   youtube_link: string;
 };
@@ -39,6 +40,7 @@ type LessonForm = {
   duration: number;
   orderIndex: number;
   isActive: boolean;
+  accessLevel: "PUBLIC" | "PRIVATE";
 };
 
 const emptyForm: LessonForm = {
@@ -50,6 +52,7 @@ const emptyForm: LessonForm = {
   duration: 30,
   orderIndex: 1,
   isActive: true,
+  accessLevel: "PUBLIC",
 };
 
 async function readResponse(response: Response) {
@@ -233,9 +236,14 @@ function TutorLessonsContent() {
                 <div>
                   <div className="flex items-start justify-between gap-3">
                     <Badge variant="primary">{courseName(lesson.course_id)}</Badge>
-                    <Badge variant={lesson.is_active ? "success" : "danger"}>
-                      {lesson.is_active ? "Publicada" : "Oculta"}
-                    </Badge>
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <Badge variant={lesson.access_level === "PUBLIC" ? "success" : "warning"}>
+                        {lesson.access_level === "PUBLIC" ? "Pública" : "Só inscritos"}
+                      </Badge>
+                      <Badge variant={lesson.is_active ? "success" : "danger"}>
+                        {lesson.is_active ? "Publicada" : "Oculta"}
+                      </Badge>
+                    </div>
                   </div>
                   <div className="mt-4 flex items-start gap-4">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 font-bold text-primary">
@@ -388,6 +396,34 @@ function TutorLessonsContent() {
                     <option value="HIDDEN">Guardar oculta</option>
                   </Select>
                 </Field>
+              </div>
+
+              <Field label="Quem pode assistir">
+                <Select
+                  value={form.accessLevel}
+                  onChange={(event) => setForm((current) => ({
+                    ...current,
+                    accessLevel: event.target.value as "PUBLIC" | "PRIVATE",
+                  }))}
+                >
+                  <option value="PUBLIC">Pública — disponível mesmo sem inscrição</option>
+                  <option value="PRIVATE">Privada — somente estudantes inscritos e pagos</option>
+                </Select>
+              </Field>
+
+              <div className={`flex items-start gap-3 rounded-xl border p-4 ${
+                form.accessLevel === "PUBLIC"
+                  ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-200"
+                  : "border-amber-500/20 bg-amber-500/5 text-amber-200"
+              }`}>
+                <span className="material-symbols-outlined">
+                  {form.accessLevel === "PUBLIC" ? "public" : "lock"}
+                </span>
+                <p className="text-xs leading-relaxed">
+                  {form.accessLevel === "PUBLIC"
+                    ? "Qualquer estudante autenticado poderá encontrar e assistir a esta aula."
+                    : "O vídeo só será entregue a estudantes com inscrição ativa e pagamento confirmado nesta cadeira."}
+                </p>
               </div>
 
               {formError && (

@@ -23,8 +23,9 @@ export async function GET(
     const admin = createAdminClient();
     const { data: lesson, error: lessonError } = await admin
       .from("lessons")
-      .select("id, title, youtube_link, duration, course_id")
+      .select("id, title, youtube_link, duration, course_id, access_level, is_active")
       .eq("id", lessonId)
+      .eq("is_active", true)
       .single();
 
     if (lessonError || !lesson) {
@@ -34,7 +35,10 @@ export async function GET(
       );
     }
 
-    if (!(await hasPaidCourseAccess(identity, lesson.course_id))) {
+    if (
+      lesson.access_level === "PRIVATE" &&
+      !(await hasPaidCourseAccess(identity, lesson.course_id))
+    ) {
       return NextResponse.json(
         { error: "Acesso negado. Inscrição necessária." },
         { status: 403 }

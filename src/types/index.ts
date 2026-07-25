@@ -80,6 +80,7 @@ export interface Lesson {
   duration?: number;
   order_index: number;
   is_active: boolean;
+  access_level?: 'PUBLIC' | 'PRIVATE';
   created_at?: string;
   updated_at?: string;
 }

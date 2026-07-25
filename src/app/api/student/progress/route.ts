@@ -51,11 +51,15 @@ export async function POST(request: Request) {
     const admin = createAdminClient();
     const { data: lesson, error: lessonError } = await admin
       .from("lessons")
-      .select("id,course_id")
+      .select("id,course_id,access_level,is_active")
       .eq("id", parsed.data.lessonId)
+      .eq("is_active", true)
       .single();
     if (lessonError || !lesson) return NextResponse.json({ error: "Aula não encontrada" }, { status: 404 });
-    if (!(await hasPaidCourseAccess(identity, lesson.course_id))) {
+    if (
+      lesson.access_level === "PRIVATE" &&
+      !(await hasPaidCourseAccess(identity, lesson.course_id))
+    ) {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 

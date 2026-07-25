@@ -15,14 +15,6 @@ interface EnrollmentCourse {
   price_monthly: number;
 }
 
-interface StudentEnrollment {
-  course_id: string;
-  end_date: string | null;
-  status: string;
-  payment_status: string;
-  courses: EnrollmentCourse | EnrollmentCourse[] | null;
-}
-
 interface LessonResponse {
   id: string;
   title: string;
@@ -31,7 +23,8 @@ interface LessonResponse {
   duration: number | null;
   order_index: number;
   course_id: string;
-  courses: { name: string } | { name: string }[] | null;
+  access_level: "PUBLIC" | "PRIVATE";
+  courses: EnrollmentCourse | EnrollmentCourse[] | null;
 }
 
 interface StudentProgress {
@@ -49,8 +42,8 @@ interface CourseGroup {
   lessons: Lesson[];
 }
 
-function getCourse(enrollment: StudentEnrollment) {
-  return Array.isArray(enrollment.courses) ? enrollment.courses[0] : enrollment.courses;
+function getLessonCourse(lesson: LessonResponse) {
+  return Array.isArray(lesson.courses) ? lesson.courses[0] : lesson.courses;
 }
 
 function getDurationLabel(duration: number | null) {
@@ -62,7 +55,6 @@ export default function StudentLessonsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  const [enrollments, setEnrollments] = useState<StudentEnrollment[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [selectedCourse, setSelectedCourse] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -82,30 +74,6 @@ export default function StudentLessonsPage() {
     setError("");
 
     try {
-      const enrollmentResponse = await fetch("/api/student/enrollments", { cache: "no-store" });
-      const enrollmentResult = await enrollmentResponse.json();
-      if (!enrollmentResponse.ok) {
-        throw new Error(enrollmentResult.error || "Não foi possível carregar as inscrições");
-      }
-
-      const now = new Date();
-      const activeEnrollments = ((enrollmentResult.enrollments || []) as StudentEnrollment[]).filter(
-        (enrollment) =>
-          enrollment.status === "ACTIVE" &&
-          enrollment.payment_status === "CONFIRMED" &&
-          (!enrollment.end_date || new Date(enrollment.end_date) > now)
-      );
-
-      const uniqueEnrollments = Array.from(
-        new Map(activeEnrollments.map((enrollment) => [enrollment.course_id, enrollment])).values()
-      );
-      setEnrollments(uniqueEnrollments);
-
-      if (!uniqueEnrollments.length) {
-        setLessons([]);
-        return;
-      }
-
       const [lessonsResponse, progressResponse] = await Promise.all([
         fetch("/api/student/lessons", { cache: "no-store" }),
         fetch("/api/student/progress", { cache: "no-store" }),
@@ -143,21 +111,22 @@ export default function StudentLessonsPage() {
   }
 
   const courseGroups = useMemo<CourseGroup[]>(() => {
-    return enrollments
-      .map((enrollment) => {
-        const course = getCourse(enrollment);
-        if (!course) return null;
+    const grouped = new Map<string, CourseGroup>();
+    for (const lesson of lessons) {
+      const course = getLessonCourse(lesson);
+      if (!course) continue;
+      const group = grouped.get(course.id) || { course, lessons: [] };
+      group.lessons.push(lesson);
+      grouped.set(course.id, group);
+    }
 
-        return {
-          course,
-          lessons: lessons
-            .filter((lesson) => lesson.course_id === enrollment.course_id)
-            .sort((a, b) => a.order_index - b.order_index),
-        };
-      })
-      .filter((group): group is CourseGroup => group !== null)
+    return [...grouped.values()]
+      .map((group) => ({
+        ...group,
+        lessons: group.lessons.sort((a, b) => a.order_index - b.order_index),
+      }))
       .sort((a, b) => a.course.name.localeCompare(b.course.name, "pt"));
-  }, [enrollments, lessons]);
+  }, [lessons]);
 
   const visibleGroups =
     selectedCourse === "all"
@@ -217,9 +186,9 @@ export default function StudentLessonsPage() {
           <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <span className="material-symbols-outlined text-4xl">school</span>
           </div>
-          <h2 className="font-playfair text-xl font-bold text-on-surface">Ainda não tem cadeiras ativas</h2>
+          <h2 className="font-playfair text-xl font-bold text-on-surface">Ainda não há aulas disponíveis</h2>
           <p className="mt-2 max-w-md text-sm leading-relaxed text-on-surface-variant/70">
-            Depois de o seu pagamento ser confirmado, as cadeiras e respetivas aulas aparecerão automaticamente aqui.
+            As aulas públicas aparecerão aqui automaticamente. As aulas privadas são desbloqueadas depois da confirmação do pagamento.
           </p>
           <Link href="/estudante/cadeiras" className="mt-6">
             <Button>Explorar cadeiras</Button>
@@ -372,6 +341,12 @@ export default function StudentLessonsPage() {
                                 ) : (
                                   <Badge variant="primary">Nova aula</Badge>
                                 )}
+                                <Badge variant={lesson.access_level === "PUBLIC" ? "success" : "warning"}>
+                                  <span className="material-symbols-outlined mr-1 text-[13px]">
+                                    {lesson.access_level === "PUBLIC" ? "public" : "lock"}
+                                  </span>
+                                  {lesson.access_level === "PUBLIC" ? "Pública" : "Inscritos"}
+                                </Badge>
                                 {durationLabel && (
                                   <span className="flex items-center gap-1 text-xs text-on-surface-variant/60">
                                     <span className="material-symbols-outlined text-[15px]">schedule</span>

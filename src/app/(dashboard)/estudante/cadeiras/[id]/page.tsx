@@ -211,7 +211,7 @@ export default function CourseDetail({ params }: PageProps) {
                     <p className="text-sm text-on-surface-variant">Nenhuma aula disponível ainda.</p>
                   )}
                   {lessons.map((lesson) => {
-                    const isLocked = !isEnrolledAndPaid;
+                    const isLocked = lesson.access_level === "PRIVATE" && !isEnrolledAndPaid;
                     // Mocking completion status if not available
                     const isCompleted = false; 
                     return (
@@ -223,7 +223,7 @@ export default function CourseDetail({ params }: PageProps) {
                             ? "border-border/5 bg-surface-container-low/20 opacity-50 cursor-not-allowed"
                             : "border-border/10 hover:border-primary/40 hover:bg-primary/5 cursor-pointer"
                         }`}
-                        title={isLocked ? "Inscreva-se para aceder" : ""}
+                        title={isLocked ? "Inscreva-se para aceder" : "Aula pública"}
                       >
                         <div className="flex items-center gap-4">
                           <div
@@ -242,6 +242,14 @@ export default function CourseDetail({ params }: PageProps) {
                           <div>
                             <span className="text-sm font-bold text-on-surface leading-tight block">
                               {lesson.title}
+                            </span>
+                            <span className={`mt-1 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider ${
+                              isLocked ? "text-amber-400" : "text-emerald-400"
+                            }`}>
+                              <span className="material-symbols-outlined text-[13px]">
+                                {lesson.access_level === "PRIVATE" ? "lock" : "public"}
+                              </span>
+                              {lesson.access_level === "PRIVATE" ? "Somente inscritos" : "Pública"}
                             </span>
                             <span className="text-[10px] text-on-surface-variant font-medium block mt-0.5">
                               Duração: {lesson.duration || 0} min

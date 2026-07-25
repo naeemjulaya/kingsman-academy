@@ -19,6 +19,7 @@ interface LessonData {
   order_index: number;
   course_id: string;
   course_name: string;
+  access_level: "PUBLIC" | "PRIVATE";
 }
 
 interface Material {
@@ -69,35 +70,20 @@ export default function LessonPlayerPage() {
       const courseLessons = lessonsResult.lessons || [];
       const lessonData = courseLessons.find((item: { id: string }) => item.id === lessonId);
 
+      if (lessonsResponse.status === 403) {
+        setHasAccess(false);
+        return;
+      }
+
       if (!lessonsResponse.ok || !lessonData) {
         router.push("/estudante/aulas");
         return;
       }
 
-      // 2. Verifica enrollment
-      const enrollmentResponse = await fetch(
-        `/api/student/enrollments?courseId=${encodeURIComponent(lessonData.course_id)}`,
-        { cache: "no-store" }
-      );
-      const enrollmentResult = enrollmentResponse.ok
-        ? await enrollmentResponse.json()
-        : { enrollments: [] };
-      const enrollment = enrollmentResult.enrollments?.[0];
-
-      const accessGranted = enrollment && 
-        enrollment.status === "ACTIVE" && 
-        enrollment.payment_status === "CONFIRMED" &&
-        (!enrollment.end_date || new Date(enrollment.end_date) > new Date());
-
-      if (!accessGranted) {
-        setHasAccess(false);
-        setLoading(false);
-        return;
-      }
-
+      // A API já validou se a aula é pública ou se existe uma inscrição paga.
       setHasAccess(true);
 
-      // 3. Formata dados da aula
+      // 2. Formata dados da aula
       let courseName = "";
       if (lessonData.courses) {
         if (Array.isArray(lessonData.courses)) {
@@ -117,23 +103,24 @@ export default function LessonPlayerPage() {
         order_index: lessonData.order_index,
         course_id: lessonData.course_id,
         course_name: courseName,
+        access_level: lessonData.access_level || "PUBLIC",
       };
 
       setLesson(formattedLesson);
 
-      // 4. O link original nunca é lido pelo browser; a API volta a validar a matrícula.
+      // 3. O link original nunca é lido pelo browser; a API volta a validar o acesso.
       const videoResponse = await fetch(`/api/lessons/${lessonId}/video`, { cache: "no-store" });
       if (!videoResponse.ok) throw new Error("Não foi possível autorizar este vídeo");
       const videoPayload: { videoUrl: string } = await videoResponse.json();
       setVideoUrl(`${videoPayload.videoUrl}&origin=${encodeURIComponent(window.location.origin)}`);
 
-      // 5. Busca materiais
+      // 4. Busca materiais
       const { data: materialsData } = await supabase
         .rpc("get_course_materials", { p_course_id: lessonData.course_id });
 
       setMaterials(((materialsData || []) as Array<Material & { lesson_id: string | null }>).filter((material) => material.lesson_id === lessonId));
 
-      // 6. Busca aulas adjacentes (anterior e próxima)
+      // 5. Busca aulas adjacentes (anterior e próxima)
       if (courseLessons.length) {
         const currentIndex = courseLessons.findIndex((lesson: { id: string }) => lesson.id === lessonId);
         setAdjacentLessons({
@@ -148,7 +135,7 @@ export default function LessonPlayerPage() {
         });
       }
 
-      // 7. Registra progresso (início de visualização)
+      // 6. Registra progresso (início de visualização)
       await trackLessonProgress(lessonId, 0);
 
     } catch (error) {

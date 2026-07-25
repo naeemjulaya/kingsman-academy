@@ -18,6 +18,7 @@ const lessonSchema = z.object({
   duration: z.number().int().min(1).max(600),
   orderIndex: z.number().int().min(1).max(10000),
   isActive: z.boolean().default(true),
+  accessLevel: z.enum(["PUBLIC", "PRIVATE"]).default("PUBLIC"),
 });
 
 async function manageableCourseIds(identity: NonNullable<Awaited<ReturnType<typeof getRequestIdentity>>>) {
@@ -56,7 +57,7 @@ export async function GET() {
 
     const { data, error } = await createAdminClient()
       .from("lessons")
-      .select("id,title,topic,description,course_id,duration,order_index,is_active,created_at,youtube_link")
+      .select("id,title,topic,description,course_id,duration,order_index,is_active,access_level,created_at,youtube_link")
       .in("course_id", courseIds)
       .order("course_id")
       .order("order_index");
@@ -122,8 +123,9 @@ export async function POST(request: Request) {
         duration: payload.duration,
         order_index: payload.orderIndex,
         is_active: payload.isActive,
+        access_level: payload.accessLevel,
       })
-      .select("id,title,topic,description,course_id,duration,order_index,is_active,created_at,youtube_link")
+      .select("id,title,topic,description,course_id,duration,order_index,is_active,access_level,created_at,youtube_link")
       .single();
     if (error) throw error;
 
