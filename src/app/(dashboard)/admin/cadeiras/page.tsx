@@ -16,6 +16,13 @@ interface ExplicadorOption {
   full_name: string;
 }
 
+interface EnrolledStudent {
+  id: string;
+  full_name: string;
+  email: string;
+  enrolled_at: string;
+}
+
 interface Cadeira {
   id: string;
   name: string;
@@ -31,6 +38,7 @@ interface Cadeira {
   tutor_names?: string[];
   tutor_ids?: string[];
   whatsapp_links?: Record<string, string>;
+  enrolled_students?: EnrolledStudent[];
 }
 
 export default function CadeirasPage() {
@@ -61,6 +69,9 @@ export default function CadeirasPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [cadeiraToDelete, setCadeiraToDelete] = useState<string | null>(null);
 
+  // Modal de estudantes inscritos
+  const [studentsCourse, setStudentsCourse] = useState<Cadeira | null>(null);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -77,6 +88,41 @@ export default function CadeirasPage() {
 
       const { data: resourceData, error: resourceError } = await supabase.rpc("get_tutor_resource_links");
       if (resourceError) throw resourceError;
+
+      const { data: enrollmentsData, error: enrollmentsError } = await supabase
+        .from("enrollments")
+        .select(`
+          id,
+          course_id,
+          created_at,
+          start_date,
+          end_date,
+          profiles:student_id(id, full_name, email)
+        `)
+        .eq("status", "ACTIVE")
+        .eq("payment_status", "CONFIRMED")
+        .order("created_at", { ascending: false });
+      if (enrollmentsError) throw enrollmentsError;
+
+      const now = new Date();
+      const studentsByCourse = new Map<string, EnrolledStudent[]>();
+      for (const enrollment of enrollmentsData || []) {
+        if (enrollment.end_date && new Date(enrollment.end_date) <= now) continue;
+        const profile = Array.isArray(enrollment.profiles)
+          ? enrollment.profiles[0]
+          : enrollment.profiles;
+        if (!profile) continue;
+
+        const currentStudents = studentsByCourse.get(enrollment.course_id) || [];
+        currentStudents.push({
+          id: profile.id,
+          full_name: profile.full_name || "Estudante sem nome",
+          email: profile.email || "Email não disponível",
+          enrolled_at: enrollment.start_date || enrollment.created_at,
+        });
+        studentsByCourse.set(enrollment.course_id, currentStudents);
+      }
+
       // 2. Fetch Tutors
       const { data: tutorsData, error: tutorsError } = await supabase
         .from("profiles")
@@ -121,6 +167,7 @@ export default function CadeirasPage() {
             tutor_names: activeTutors.map((tutor) => tutor.name),
             tutor_ids: activeTutors.map((tutor) => tutor.id),
             whatsapp_links: Object.fromEntries(activeTutors.map((tutor) => [tutor.id, tutor.whatsappUrl])),
+            enrolled_students: studentsByCourse.get(c.id) || [],
           };
         })
       );
@@ -259,6 +306,7 @@ export default function CadeirasPage() {
                     <TableHead>Departamento</TableHead>
                     <TableHead>Preço Mensal</TableHead>
                     <TableHead>Nº Aulas</TableHead>
+                    <TableHead>Estudantes</TableHead>
                     <TableHead>Explicador Responsável</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -274,6 +322,24 @@ export default function CadeirasPage() {
                       <TableCell>{c.department}</TableCell>
                       <TableCell className="font-medium">{c.price_monthly} MT</TableCell>
                       <TableCell className="font-medium text-primary">{c.lessons_count} aulas</TableCell>
+                      <TableCell>
+                        <button
+                          type="button"
+                          onClick={() => setStudentsCourse(c)}
+                          className="group inline-flex items-center gap-2 rounded-lg border border-primary/15 bg-primary/5 px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-primary/10"
+                          aria-label={`Ver estudantes inscritos em ${c.name}`}
+                        >
+                          <span className="material-symbols-outlined text-lg text-primary">groups</span>
+                          <span>
+                            <span className="block text-sm font-bold text-on-surface">
+                              {c.enrolled_students?.length || 0}
+                            </span>
+                            <span className="block text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant/60 group-hover:text-primary">
+                              Ver nomes
+                            </span>
+                          </span>
+                        </button>
+                      </TableCell>
                       <TableCell className="font-medium text-on-surface">
                         {c.tutor_names?.length ? c.tutor_names.join(", ") : "Sem Explicador"}
                       </TableCell>
@@ -428,6 +494,67 @@ export default function CadeirasPage() {
                 </Button>
               </DialogFooter>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Lista de estudantes com acesso ativo à cadeira */}
+        <Dialog open={Boolean(studentsCourse)} onOpenChange={(open) => !open && setStudentsCourse(null)}>
+          <DialogContent className="max-w-2xl" onClose={() => setStudentsCourse(null)}>
+            <DialogHeader>
+              <div className="flex items-center gap-3 pr-8">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <span className="material-symbols-outlined">groups</span>
+                </div>
+                <div>
+                  <DialogTitle>Estudantes inscritos</DialogTitle>
+                  <DialogDescription>
+                    {studentsCourse?.name} · {studentsCourse?.enrolled_students?.length || 0} com acesso ativo
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            {studentsCourse?.enrolled_students?.length ? (
+              <div className="overflow-hidden rounded-xl border border-white/5">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Estudante</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Inscrição</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {studentsCourse.enrolled_students.map((student) => (
+                      <TableRow key={student.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                              {student.full_name.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="font-semibold text-on-surface">{student.full_name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{student.email}</TableCell>
+                        <TableCell>
+                          {student.enrolled_at
+                            ? new Date(student.enrolled_at).toLocaleDateString("pt-PT")
+                            : "N/D"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-primary/15 bg-primary/[0.03] px-6 py-10 text-center">
+                <span className="material-symbols-outlined text-4xl text-primary/50">group_off</span>
+                <p className="mt-3 font-semibold text-on-surface">Ainda não há estudantes com acesso ativo.</p>
+                <p className="mt-1 text-sm text-on-surface-variant">
+                  Inscrições pendentes ou pagamentos não confirmados não entram nesta contagem.
+                </p>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
 
