@@ -9,6 +9,11 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SelectInput } from "@/components/ui/select_input";
 import { createClient } from "@/lib/supabase/client";
+import {
+  calculateCourseCart,
+  readCourseCart,
+  writeCourseCart,
+} from "@/lib/course-cart";
 
 interface Tutor {
   id: string;
@@ -76,7 +81,14 @@ export default function StudentCoursesPage() {
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [cartIds, setCartIds] = useState<string[]>([]);
   const itemsPerPage = 6;
+
+  useEffect(() => {
+    const savedCart = readCourseCart();
+    setCartIds(savedCart);
+    if (savedCart.length) setShowExplore(true);
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -179,6 +191,32 @@ export default function StudentCoursesPage() {
     currentPage * itemsPerPage
   );
   const catalogueIsVisible = myCourses.length === 0 || showExplore;
+  const cartCourses = useMemo(
+    () => cartIds.map((id) => courses.find((course) => course.id === id)).filter(Boolean) as Course[],
+    [cartIds, courses],
+  );
+  const cartPricing = useMemo(() => calculateCourseCart(cartCourses), [cartCourses]);
+
+  useEffect(() => {
+    if (!courses.length) return;
+    const validIds = cartIds.filter(
+      (id) => courses.some((course) => course.id === id) && !registrationByCourse.has(id),
+    );
+    if (validIds.length !== cartIds.length) {
+      setCartIds(validIds);
+      writeCourseCart(validIds);
+    }
+  }, [cartIds, courses, registrationByCourse]);
+
+  const toggleCartCourse = (courseId: string) => {
+    setCartIds((current) => {
+      const next = current.includes(courseId)
+        ? current.filter((id) => id !== courseId)
+        : [...current, courseId];
+      writeCourseCart(next);
+      return next;
+    });
+  };
 
   useEffect(() => {
     setCurrentPage(1);
@@ -365,6 +403,62 @@ export default function StudentCoursesPage() {
                   </p>
                 </div>
 
+                <Card className="overflow-hidden border-primary/20 p-0">
+                  <div className="flex flex-col gap-4 bg-gradient-to-r from-primary/15 via-primary/5 to-transparent p-5 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex items-start gap-4">
+                      <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary text-black">
+                        <span className="material-symbols-outlined">shopping_cart</span>
+                        {cartIds.length > 0 && (
+                          <span className="absolute -right-2 -top-2 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-[#120b12] bg-white px-1 text-[10px] font-black text-black">
+                            {cartIds.length}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-playfair text-lg font-bold text-on-surface">
+                          {cartIds.length ? "O seu carrinho" : "Pacote promocional"}
+                        </p>
+                        <p className="mt-1 text-sm text-on-surface-variant">
+                          {cartIds.length
+                            ? `${cartIds.length} ${cartIds.length === 1 ? "cadeira selecionada" : "cadeiras selecionadas"}`
+                            : "Escolha duas cadeiras e pague apenas 1.000 MT no total."}
+                        </p>
+                        {cartPricing.discount > 0 && (
+                          <p className="mt-1 text-xs font-bold text-emerald-300">
+                            Promoção aplicada · poupa {cartPricing.discount} MT
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      {cartIds.length > 0 && (
+                        <div className="text-left sm:text-right">
+                          {cartPricing.discount > 0 && (
+                            <p className="text-xs text-on-surface-variant line-through">
+                              {cartPricing.regularTotal} MT
+                            </p>
+                          )}
+                          <p className="text-2xl font-black text-primary">{cartPricing.total} MT</p>
+                        </div>
+                      )}
+                      <Link
+                        href={cartIds.length
+                          ? `/estudante/pagamento?courseIds=${encodeURIComponent(cartIds.join(","))}`
+                          : "#catalogo-cadeiras"}
+                        className={`inline-flex items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-bold transition-colors ${
+                          cartIds.length
+                            ? "bg-primary text-black hover:bg-primary/90"
+                            : "pointer-events-none bg-surface-container text-on-surface-variant opacity-50"
+                        }`}
+                      >
+                        Finalizar compra
+                        <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                      </Link>
+                    </div>
+                  </div>
+                </Card>
+
                 <Card className="flex flex-col items-center gap-4 p-4 md:flex-row">
                   <div className="relative w-full flex-1">
                     <Input
@@ -391,7 +485,7 @@ export default function StudentCoursesPage() {
                 </Card>
 
                 {paginatedCourses.length > 0 ? (
-                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  <div id="catalogo-cadeiras" className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {paginatedCourses.map((course) => {
                       const tutor = course.tutors?.[0];
                       return (
@@ -427,13 +521,29 @@ export default function StudentCoursesPage() {
                                 {tutor?.full_name || "Explicador por anunciar"}
                               </span>
                             </div>
-                            <Link
-                              href={`/estudante/cadeiras/${course.id}`}
-                              className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 px-4 py-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary hover:text-white"
-                            >
-                              Ver detalhes e inscrever-me
-                              <span className="material-symbols-outlined text-[17px]">arrow_forward</span>
-                            </Link>
+                            <div className="grid grid-cols-1 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => toggleCartCourse(course.id)}
+                                className={`flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold transition-colors ${
+                                  cartIds.includes(course.id)
+                                    ? "border border-primary bg-primary/10 text-primary"
+                                    : "bg-primary text-black hover:bg-primary/90"
+                                }`}
+                              >
+                                <span className="material-symbols-outlined text-[18px]">
+                                  {cartIds.includes(course.id) ? "remove_shopping_cart" : "add_shopping_cart"}
+                                </span>
+                                {cartIds.includes(course.id) ? "Remover do carrinho" : "Adicionar ao carrinho"}
+                              </button>
+                              <Link
+                                href={`/estudante/cadeiras/${course.id}`}
+                                className="flex items-center justify-center gap-2 rounded-lg border border-white/5 px-4 py-2 text-xs font-semibold text-on-surface-variant transition-colors hover:border-primary/30 hover:text-primary"
+                              >
+                                Ver detalhes
+                                <span className="material-symbols-outlined text-[16px]">visibility</span>
+                              </Link>
+                            </div>
                           </div>
                         </Card>
                       );

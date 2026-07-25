@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { getCourseDescription } from "@/lib/course-descriptions";
+import { readCourseCart, writeCourseCart } from "@/lib/course-cart";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -127,7 +128,10 @@ export default function CourseDetail({ params }: PageProps) {
   };
 
   const handleEnroll = () => {
-    router.push(`/estudante/pagamento?courseId=${course?.id}`);
+    if (!course?.id) return;
+    const courseIds = [...new Set([...readCourseCart(), course.id])];
+    writeCourseCart(courseIds);
+    router.push(`/estudante/pagamento?courseIds=${encodeURIComponent(courseIds.join(","))}`);
   };
 
   if (loading) {
@@ -436,6 +440,9 @@ export default function CourseDetail({ params }: PageProps) {
                     <span className="text-3xl font-bold text-primary">{course.price_monthly} MT</span>
                     <span className="text-on-surface-variant text-xs font-semibold">/mês</span>
                   </div>
+                  <p className="mt-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-300">
+                    Adicione uma segunda cadeira e pague 1.000 MT pelas duas.
+                  </p>
                 </div>
 
                 <div className="space-y-4 border-t border-border/10 pt-4 text-xs text-on-surface-variant">
@@ -454,7 +461,7 @@ export default function CourseDetail({ params }: PageProps) {
                 </div>
 
                 <Button onClick={handleEnroll} variant="primary" className="w-full py-3.5 uppercase font-bold tracking-wider">
-                  Inscrever-se na Cadeira
+                  Adicionar ao carrinho
                 </Button>
               </>
             )}

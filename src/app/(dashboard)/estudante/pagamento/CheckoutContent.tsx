@@ -7,6 +7,10 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+    calculateCourseCart,
+    COURSE_CART_STORAGE_KEY,
+} from "@/lib/course-cart";
 
 type PaymentMethod = "MPESA" | "EMOLA" | "TRANSFERENCIA";
 interface PaymentSettings {
@@ -22,6 +26,13 @@ type PaymentApiResult = {
     uploadUrl?: string;
     paymentId?: string;
 };
+
+interface CheckoutCourse {
+    id: string;
+    name: string;
+    department: string | null;
+    price_monthly: number;
+}
 
 async function readPaymentApiResult(response: Response): Promise<PaymentApiResult> {
     const body = await response.text();
@@ -39,12 +50,14 @@ async function readPaymentApiResult(response: Response): Promise<PaymentApiResul
 export default function CheckoutContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const courseId = searchParams.get("courseId");
+    const courseIdsParam = searchParams.get("courseIds") || searchParams.get("courseId") || "";
+    const courseIds = [...new Set(courseIdsParam.split(",").filter(Boolean))];
     const { user } = useAuth();
     const supabase = createClient();
 
-    const [course, setCourse] = useState<any>(null);
+    const [courses, setCourses] = useState<CheckoutCourse[]>([]);
     const [loadingInitial, setLoadingInitial] = useState(true);
+    const pricing = calculateCourseCart(courses);
 
     const [method, setMethod] = useState<PaymentMethod>("MPESA");
     const [file, setFile] = useState<File | null>(null);
@@ -68,24 +81,28 @@ export default function CheckoutContent() {
     }, []);
 
     useEffect(() => {
-        if (courseId) {
-            fetchCourse();
+        if (courseIds.length) {
+            fetchCourses();
         } else {
             router.push("/estudante/cadeiras");
         }
-    }, [courseId]);
+    }, [courseIdsParam]);
 
-    const fetchCourse = async () => {
+    const fetchCourses = async () => {
         try {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from('courses')
-                .select('*')
-                .eq('id', courseId)
-                .single();
+                .select('id,name,department,price_monthly')
+                .in('id', courseIds)
+                .eq('is_active', true);
+            if (error) throw error;
 
-            if (data) setCourse(data);
+            const ordered = courseIds
+                .map((id) => (data || []).find((course) => course.id === id))
+                .filter(Boolean) as CheckoutCourse[];
+            setCourses(ordered);
         } catch (error) {
-            console.error("Error fetching course:", error);
+            console.error("Error fetching courses:", error);
         } finally {
             setLoadingInitial(false);
         }
@@ -134,7 +151,7 @@ export default function CheckoutContent() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!file || !user || !course) return;
+        if (!file || !user || !courses.length) return;
 
         setLoading(true);
         try {
@@ -165,7 +182,7 @@ export default function CheckoutContent() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    courseId: course.id,
+                    courseIds: courses.map((course) => course.id),
                     method,
                     proofPath: filePath,
                 }),
@@ -175,6 +192,7 @@ export default function CheckoutContent() {
             if (!paymentResult.paymentId) throw new Error("O pagamento foi registado sem um identificador");
 
             setTransactionId(paymentResult.paymentId.split('-')[0].toUpperCase());
+            window.localStorage.removeItem(COURSE_CART_STORAGE_KEY);
             setStep(3);
         } catch (error) {
             console.error("Error submitting payment:", error);
@@ -192,8 +210,8 @@ export default function CheckoutContent() {
         );
     }
 
-    if (!course) {
-        return <div className="text-center py-20 text-on-surface-variant font-medium">Cadeira não encontrada.</div>;
+    if (!courses.length || courses.length !== courseIds.length) {
+        return <div className="text-center py-20 text-on-surface-variant font-medium">Uma ou mais cadeiras não foram encontradas.</div>;
     }
 
     return (
@@ -352,7 +370,7 @@ export default function CheckoutContent() {
                                     </li>
                                     <li className="flex gap-3">
                                         <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">4</span>
-                                        <p>Introduza o valor total de <span className="text-primary font-bold">{course.price_monthly} MT</span>.</p>
+                                        <p>Introduza o valor total de <span className="text-primary font-bold">{pricing.total} MT</span>.</p>
                                     </li>
                                 </ol>
                             )}
@@ -380,7 +398,7 @@ export default function CheckoutContent() {
                                     </li>
                                     <li className="flex gap-3">
                                         <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">4</span>
-                                        <p>Confirme o valor de <span className="text-primary font-bold">{course.price_monthly} MT</span>.</p>
+                                        <p>Confirme o valor de <span className="text-primary font-bold">{pricing.total} MT</span>.</p>
                                     </li>
                                 </ol>
                             )}
@@ -434,25 +452,48 @@ export default function CheckoutContent() {
                             <h3 className="font-playfair text-xl font-bold text-on-surface mb-6 uppercase border-b border-border/10 pb-4">
                                 Resumo do Pedido
                             </h3>
+                            <button
+                                type="button"
+                                onClick={() => router.push("/estudante/cadeiras")}
+                                className="-mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+                            >
+                                <span className="material-symbols-outlined text-base">edit</span>
+                                Editar carrinho
+                            </button>
 
                             <div className="space-y-4">
-                                <div className="flex justify-between items-start pb-4 border-b border-border/10">
-                                    <div>
-                                        <p className="text-sm font-bold text-on-surface">{course.name}</p>
-                                        <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wide mt-0.5">Matrícula Semestral</p>
+                                {pricing.items.map((course) => (
+                                    <div key={course.id} className="flex justify-between gap-4 border-b border-border/10 pb-4">
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-bold text-on-surface">{course.name}</p>
+                                            <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">
+                                                Matrícula mensal
+                                            </p>
+                                        </div>
+                                        <div className="shrink-0 text-right">
+                                            {course.chargedPrice < course.price_monthly && (
+                                                <p className="text-[10px] text-on-surface-variant line-through">{course.price_monthly} MT</p>
+                                            )}
+                                            <span className="text-sm font-bold text-on-surface">{course.chargedPrice} MT</span>
+                                        </div>
                                     </div>
-                                    <span className="text-sm font-bold text-on-surface">{course.price_monthly} MT</span>
-                                </div>
+                                ))}
 
                                 <div className="flex justify-between text-xs text-on-surface-variant font-bold">
                                     <span>Taxa de Processamento</span>
                                     <span>0 MT</span>
                                 </div>
+                                {pricing.discount > 0 && (
+                                    <div className="flex justify-between rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-300">
+                                        <span>Desconto promocional</span>
+                                        <span>-{pricing.discount} MT</span>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex justify-between items-center pt-4 border-t border-border/10">
                                 <span className="font-playfair text-base font-bold text-on-surface-variant">TOTAL</span>
-                                <span className="font-playfair text-3xl font-bold text-primary">{course.price_monthly} MT</span>
+                                <span className="font-playfair text-3xl font-bold text-primary">{pricing.total} MT</span>
                             </div>
 
                             <Button
@@ -485,7 +526,7 @@ export default function CheckoutContent() {
                     <div className="space-y-2">
                         <h3 className="font-playfair text-2xl font-bold text-on-surface uppercase">Comprovativo Submetido!</h3>
                         <p className="text-sm text-on-surface-variant max-w-sm mx-auto leading-relaxed">
-                            O seu pagamento para a cadeira <span className="text-primary font-bold">{course.name}</span> foi enviado para a coordenação.
+                            O seu pagamento para <span className="text-primary font-bold">{courses.length} {courses.length === 1 ? "cadeira" : "cadeiras"}</span> foi enviado para a coordenação.
                         </p>
                     </div>
 
@@ -496,7 +537,7 @@ export default function CheckoutContent() {
                         </div>
                         <div className="flex justify-between">
                             <span className="text-[#808080]">Valor:</span>
-                            <span className="font-bold">{course.price_monthly} MT</span>
+                            <span className="font-bold">{pricing.total} MT</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-[#808080]">Estado:</span>

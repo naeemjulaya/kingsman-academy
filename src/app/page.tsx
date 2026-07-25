@@ -500,7 +500,7 @@ export default function LandingPage() {
               <h2 className="font-playfair text-3xl md:text-4xl text-on-surface uppercase font-bold">Planos de Acesso</h2>
               <p className="text-on-surface-variant text-sm mt-2">Escolha o nível de suporte ideal para o seu semestre.</p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-4">
               {/* Plano 1 */}
               <div className="glass-panel landing-card p-8 rounded-xl flex flex-col justify-between h-full border border-white/5">
                 <div>
@@ -524,8 +524,7 @@ export default function LandingPage() {
               </div>
 
               {/* Plano 2 */}
-              <div className="glass-panel landing-card landing-card-featured p-8 rounded-xl flex flex-col justify-between h-full border-2 border-primary relative transform lg:-translate-y-4 shadow-2xl shadow-primary/20 bg-[#1a0a1a]/60">
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-primary text-black px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Mais Popular</div>
+              <div className="glass-panel landing-card p-8 rounded-xl flex flex-col justify-between h-full border border-white/5">
                 <div>
                   <h3 className="font-playfair text-xl text-on-surface font-bold mb-4">Mensal por Cadeira</h3>
                   <div className="mb-8">
@@ -548,6 +547,35 @@ export default function LandingPage() {
               </div>
 
               {/* Plano 3 */}
+              <div className="glass-panel landing-card landing-card-featured relative flex h-full flex-col justify-between rounded-xl border-2 border-primary bg-[#1a0a1a]/60 p-8 shadow-2xl shadow-primary/20 xl:-translate-y-4">
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-primary px-4 py-1 text-[10px] font-bold uppercase tracking-wider text-black">
+                  Pacote Promocional
+                </div>
+                <div>
+                  <h3 className="mb-4 font-playfair text-xl font-bold text-on-surface">Duas Cadeiras</h3>
+                  <div className="mb-2">
+                    <span className="text-3xl font-bold text-primary">1.000 MT</span>
+                    <span className="text-sm text-on-surface-variant">/mês</span>
+                  </div>
+                  <p className="mb-7 text-xs font-bold text-emerald-300">
+                    Poupe 300 MT todos os meses
+                  </p>
+                  <ul className="mb-8 space-y-4 text-sm text-on-surface-variant">
+                    <li className="flex items-center gap-2"><span className="material-symbols-outlined text-lg text-primary">check_circle</span> Escolha livremente 2 cadeiras</li>
+                    <li className="flex items-center gap-2"><span className="material-symbols-outlined text-lg text-primary">check_circle</span> Acesso total às aulas e materiais</li>
+                    <li className="flex items-center gap-2"><span className="material-symbols-outlined text-lg text-primary">check_circle</span> Grupos exclusivos das duas cadeiras</li>
+                    <li className="flex items-center gap-2"><span className="material-symbols-outlined text-lg text-primary">check_circle</span> Desconto aplicado automaticamente</li>
+                  </ul>
+                </div>
+                <button
+                  onClick={() => router.push("/register")}
+                  className="w-full cursor-pointer rounded-lg py-3 text-sm font-bold text-black shadow-lg shadow-primary/30 transition-all hover:scale-[1.03] magenta-gradient"
+                >
+                  Aproveitar Promoção
+                </button>
+              </div>
+
+              {/* Plano 4 */}
               <div className="glass-panel landing-card p-8 rounded-xl flex flex-col justify-between h-full border border-white/5">
                 <div>
                   <h3 className="font-playfair text-xl text-on-surface font-bold mb-4">Revisão Especial</h3>

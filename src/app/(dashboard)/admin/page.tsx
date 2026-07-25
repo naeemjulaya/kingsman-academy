@@ -67,8 +67,31 @@ export default function AdminDashboard() {
         .eq('status', 'PENDING')
         .order('created_at', { ascending: false });
 
-      // Forçamos a tipagem do retorno do Supabase para evitar erros de linting
-      setPayments((pendingPayments as unknown as PaymentRow[]) || []);
+      const pendingRows = (pendingPayments as unknown as PaymentRow[]) || [];
+      const groupedPending = new Map<string, PaymentRow>();
+      for (const payment of pendingRows) {
+        const studentName = payment.student
+          ? (Array.isArray(payment.student) ? payment.student[0]?.full_name : payment.student.full_name)
+          : "";
+        const groupKey = payment.proof_url
+          ? `${studentName}:${payment.proof_url}`
+          : payment.id;
+        const existing = groupedPending.get(groupKey);
+        if (!existing) {
+          groupedPending.set(groupKey, payment);
+          continue;
+        }
+
+        const existingCourse = existing.course
+          ? (Array.isArray(existing.course) ? existing.course[0]?.name : existing.course.name)
+          : "Cadeira";
+        const nextCourse = payment.course
+          ? (Array.isArray(payment.course) ? payment.course[0]?.name : payment.course.name)
+          : "Cadeira";
+        existing.amount += Number(payment.amount || 0);
+        existing.course = { name: `${existingCourse}, ${nextCourse}` };
+      }
+      setPayments([...groupedPending.values()]);
 
       // Fetch Stats
       const { count: studentsCount } = await supabase

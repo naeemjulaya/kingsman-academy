@@ -13,6 +13,7 @@ import { PaymentProofDialog } from "@/components/admin/payment-proof-dialog";
 
 interface Pagamento {
   id: string;
+  payment_ids: string[];
   student_name: string;
   student_email: string;
   plan: string;
@@ -54,12 +55,13 @@ export default function PagamentosPage() {
 
       if (error) throw error;
 
-      const mapped = (data || []).map((p: any) => {
+      const individualPayments = (data || []).map((p: any) => {
         const studentInfo = p.profiles || {};
         const courseInfo = p.courses || {};
 
         return {
           id: p.id,
+          payment_ids: [p.id],
           student_name: studentInfo.full_name || "Desconhecido",
           student_email: studentInfo.email || "N/D",
           plan: courseInfo.name || "Mensalidade Cadeira",
@@ -71,7 +73,24 @@ export default function PagamentosPage() {
         };
       });
 
-      setPayments(mapped);
+      const grouped = new Map<string, Pagamento>();
+      for (const payment of individualPayments) {
+        const groupKey = payment.proof_url
+          ? `${payment.student_email}:${payment.proof_url}`
+          : payment.id;
+        const existing = grouped.get(groupKey);
+        if (!existing) {
+          grouped.set(groupKey, payment);
+          continue;
+        }
+
+        existing.payment_ids.push(payment.id);
+        existing.plan = `${existing.plan}, ${payment.plan}`;
+        existing.amount += Number(payment.amount || 0);
+        if (existing.status !== payment.status) existing.status = "PENDING";
+      }
+
+      setPayments([...grouped.values()]);
     } catch (error) {
       console.error("Erro ao buscar pagamentos:", error);
     } finally {
@@ -86,7 +105,7 @@ export default function PagamentosPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-      const result = await response.json() as { error?: string };
+      const result = await response.json() as { error?: string; paymentIds?: string[] };
       if (!response.ok) throw new Error(result.error || "Não foi possível validar o pagamento");
 
       setPayments(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p));
@@ -254,7 +273,16 @@ export default function PagamentosPage() {
                           <p className="text-xs text-[#808080] font-medium">{p.student_email}</p>
                         </div>
                       </TableCell>
-                      <TableCell className="font-medium">{p.plan}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="max-w-xs">
+                          <p>{p.plan}</p>
+                          {p.payment_ids.length > 1 && (
+                            <Badge variant="primary" className="mt-2">
+                              Pacote · {p.payment_ids.length} cadeiras
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="font-bold text-primary">{p.amount} MT</TableCell>
                       <TableCell>{p.date ? new Date(p.date).toLocaleDateString("pt-PT") : "N/D"}</TableCell>
                       <TableCell>
