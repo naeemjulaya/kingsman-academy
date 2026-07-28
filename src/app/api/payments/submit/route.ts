@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 const submissionSchema = z.object({
   courseIds: z.array(z.string().uuid()).min(1).max(20)
     .refine((ids) => new Set(ids).size === ids.length, "As cadeiras não podem estar repetidas"),
-  method: z.enum(["MPESA", "EMOLA", "TRANSFERENCIA"]),
+  method: z.enum(["EMOLA", "TRANSFERENCIA"]),
   proofPath: z.string().trim().min(3).max(500),
 });
 

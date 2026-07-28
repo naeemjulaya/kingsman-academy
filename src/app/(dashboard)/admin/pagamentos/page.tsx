@@ -161,7 +161,7 @@ export default function PagamentosPage() {
           <div>
             <h1 className="text-3xl font-bold text-on-surface">Gestão de Pagamentos</h1>
             <p className="text-sm text-on-surface-variant/70 mt-1">
-              Valide as transferências e submissões M-Pesa/E-Mola de mensalidades e inscrições diretamente da base de dados.
+              Valide comprovativos de e-Mola e transferências bancárias diretamente da base de dados.
             </p>
           </div>
           <Button variant="outline" onClick={handleExportCSV} className="w-full md:w-auto font-bold uppercase tracking-wider">

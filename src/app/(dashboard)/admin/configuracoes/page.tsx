@@ -142,8 +142,14 @@ export default function ConfiguracoesPage() {
                     <p className="text-xs text-on-surface-variant mt-1">Estes dados são mostrados ao estudante no checkout. Não são chaves de API.</p>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
-                    <Field label="Número ou código M-Pesa">
-                      <Input placeholder="Ex.: 84 000 0000" value={settings.mpesa_number} onChange={(e) => update("mpesa_number", e.target.value)} />
+                    <Field label="M-Pesa — indisponível de momento">
+                      <Input
+                        disabled
+                        placeholder="Método temporariamente indisponível"
+                        value={settings.mpesa_number}
+                        onChange={(e) => update("mpesa_number", e.target.value)}
+                        className="cursor-not-allowed opacity-50"
+                      />
                     </Field>
                     <Field label="Número ou código e-Mola">
                       <Input placeholder="Ex.: 86 000 0000" value={settings.emola_number} onChange={(e) => update("emola_number", e.target.value)} />

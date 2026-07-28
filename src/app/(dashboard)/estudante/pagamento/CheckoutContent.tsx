@@ -12,9 +12,8 @@ import {
     COURSE_CART_STORAGE_KEY,
 } from "@/lib/course-cart";
 
-type PaymentMethod = "MPESA" | "EMOLA" | "TRANSFERENCIA";
+type PaymentMethod = "EMOLA" | "TRANSFERENCIA";
 interface PaymentSettings {
-    mpesa_number: string;
     emola_number: string;
     bank_details: string;
     payment_review_hours: number;
@@ -59,7 +58,7 @@ export default function CheckoutContent() {
     const [loadingInitial, setLoadingInitial] = useState(true);
     const pricing = calculateCourseCart(courses);
 
-    const [method, setMethod] = useState<PaymentMethod>("MPESA");
+    const [method, setMethod] = useState<PaymentMethod>("EMOLA");
     const [file, setFile] = useState<File | null>(null);
     const [filePreview, setFilePreview] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -67,7 +66,6 @@ export default function CheckoutContent() {
     const [transactionId, setTransactionId] = useState<string>("");
     const [copiedField, setCopiedField] = useState<string | null>(null);
     const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>({
-        mpesa_number: "849418723",
         emola_number: "863312201",
         bank_details: "BIM (NIB)\n000100000103813561457",
         payment_review_hours: 24,
@@ -263,17 +261,12 @@ export default function CheckoutContent() {
                             <h3 className="text-xs text-on-surface-variant font-bold uppercase tracking-widest mb-4">Escolha o Método</h3>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div
-                                    onClick={() => setMethod("MPESA")}
-                                    className={`glass-panel p-5 rounded-xl border relative cursor-pointer group hover:scale-[1.02] transition-all flex flex-col justify-between ${method === "MPESA" ? "border-2 border-primary" : "border-primary/10"
-                                        }`}
+                                    aria-disabled="true"
+                                    className="glass-panel relative flex cursor-not-allowed flex-col justify-between rounded-xl border border-white/5 p-5 opacity-45 grayscale"
                                 >
-                                    {method === "MPESA" && (
-                                        <div className="absolute top-2.5 right-2.5 text-primary">
-                                            <span className="material-symbols-outlined text-md" style={{ fontVariationSettings: "'FILL' 1" }}>
-                                                check_circle
-                                            </span>
-                                        </div>
-                                    )}
+                                    <span className="absolute right-2.5 top-2.5 rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-amber-300">
+                                        Indisponível
+                                    </span>
                                     <div className="mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-xl border border-white/10 shadow-md">
                                         <Image
                                             src="/payment-methods/mpesa.svg"
@@ -285,7 +278,9 @@ export default function CheckoutContent() {
                                     </div>
                                     <div>
                                         <p className="font-playfair text-lg text-on-surface font-bold">M-Pesa</p>
-                                        <p className="text-[10px] text-[#808080] font-semibold mt-0.5">Vodacom Mozambique</p>
+                                        <p className="mt-0.5 text-[10px] font-semibold text-amber-300">
+                                            Indisponível de momento
+                                        </p>
                                     </div>
                                 </div>
 
@@ -346,34 +341,6 @@ export default function CheckoutContent() {
                                     Instruções de Pagamento {method}
                                 </h4>
                             </div>
-
-                            {method === "MPESA" && (
-                                <ol className="space-y-3 text-sm text-on-surface-variant font-medium">
-                                    <li className="flex gap-3">
-                                        <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">1</span>
-                                        <p>Abra o menu M-Pesa no seu telemóvel.</p>
-                                    </li>
-                                    <li className="flex gap-3">
-                                        <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">2</span>
-                                        <p>Selecione a opção para transferir dinheiro.</p>
-                                    </li>
-                                    <li className="flex gap-3">
-                                        <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">3</span>
-                                        <div className="flex-1">
-                                            <p className="mb-2">Envie para o número M-Pesa:</p>
-                                            <CopyablePaymentValue
-                                                value={paymentSettings.mpesa_number || "Não configurado"}
-                                                copied={copiedField === "mpesa"}
-                                                onCopy={() => copyPaymentValue(paymentSettings.mpesa_number, "mpesa")}
-                                            />
-                                        </div>
-                                    </li>
-                                    <li className="flex gap-3">
-                                        <span className="bg-amber-500/20 text-amber-400 w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold">4</span>
-                                        <p>Introduza o valor total de <span className="text-primary font-bold">{pricing.total} MT</span>.</p>
-                                    </li>
-                                </ol>
-                            )}
 
                             {method === "EMOLA" && (
                                 <ol className="space-y-3 text-sm text-on-surface-variant font-medium">
