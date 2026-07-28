@@ -76,12 +76,21 @@ export default function InscricoesPage() {
 
   const handleUpdateStatus = async (id: string, newStatus: "ACTIVE" | "CANCELLED") => {
     try {
-      const { error } = await supabase.rpc("admin_update_enrollment", {
-        p_enrollment_id: id,
-        p_status: newStatus,
+      const response = await fetch(`/api/admin/enrollments/${id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
       });
-
-      if (error) throw error;
+      const body = await response.text();
+      let result: { error?: string } = {};
+      try {
+        result = body ? JSON.parse(body) : {};
+      } catch {
+        throw new Error(`O servidor devolveu uma resposta inválida (HTTP ${response.status})`);
+      }
+      if (!response.ok) {
+        throw new Error(result.error || `Não foi possível atualizar a matrícula (HTTP ${response.status})`);
+      }
 
       setInscricoes(prev => prev.map(ins => ins.id === id ? { ...ins, status: newStatus } : ins));
       alert(`Matrícula atualizada para ${newStatus === "ACTIVE" ? "Ativa" : "Cancelada"} com sucesso!`);
