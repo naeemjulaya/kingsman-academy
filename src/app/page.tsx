@@ -24,10 +24,20 @@ interface LandingCourse {
   tutors: LandingTutor[];
 }
 
+interface LandingPublicLesson {
+  id: string;
+  title: string;
+  topic?: string | null;
+  duration?: number | null;
+  course_id: string;
+  course_name: string;
+}
+
 interface LandingCatalog {
   courses: LandingCourse[];
   tutors: LandingTutor[];
-  stats: { courses: number; tutors: number; students: number };
+  publicLessons: LandingPublicLesson[];
+  stats: { courses: number; tutors: number; students: number; freeLessons: number };
 }
 
 const fallbackTutors: LandingTutor[] = [
@@ -88,6 +98,21 @@ const featuredCourseOrder = [
 
 const featuredTutorOrder = ["Keven Gulele", "Dulce Ezequiel", "Naeem Julaya", "Virgínia Tembe"];
 
+const fallbackPublicLessons: LandingPublicLesson[] = [
+  {
+    id: "free-nitrocompostos",
+    title: "Nitrocompostos e aminas",
+    course_id: "quimica-organica",
+    course_name: "Química Orgânica",
+  },
+  {
+    id: "free-topologia",
+    title: "Topologia de Funções",
+    course_id: "analise-matematica",
+    course_name: "Análise Matemática",
+  },
+];
+
 export default function LandingPage() {
   const router = useRouter();
   const [platform, setPlatform] = useState({
@@ -99,7 +124,8 @@ export default function LandingPage() {
   const [catalog, setCatalog] = useState<LandingCatalog>({
     courses: fallbackCourses,
     tutors: fallbackTutors,
-    stats: { courses: 12, tutors: 8, students: 0 },
+    publicLessons: fallbackPublicLessons,
+    stats: { courses: 12, tutors: 8, students: 0, freeLessons: fallbackPublicLessons.length },
   });
 
   useEffect(() => {
@@ -107,7 +133,16 @@ export default function LandingPage() {
     fetch("/api/catalog")
       .then((response) => response.json())
       .then((data) => {
-        if (Array.isArray(data.courses) && Array.isArray(data.tutors)) setCatalog(data);
+        if (Array.isArray(data.courses) && Array.isArray(data.tutors)) {
+          setCatalog({
+            ...data,
+            publicLessons: Array.isArray(data.publicLessons) ? data.publicLessons : [],
+            stats: {
+              ...data.stats,
+              freeLessons: data.stats?.freeLessons ?? data.publicLessons?.length ?? 0,
+            },
+          });
+        }
       })
       .catch(() => undefined);
   }, []);
@@ -278,6 +313,84 @@ export default function LandingPage() {
               >
                 Ver Cadeiras
               </a>
+            </div>
+          </div>
+        </section>
+
+        {/* ANÚNCIO DE AULAS GRATUITAS */}
+        <section
+          id="aulas-gratis"
+          className="relative z-20 -mt-10 px-6 pb-8 md:px-12"
+          data-landing-reveal
+        >
+          <div className="mx-auto max-w-[1320px]">
+            <div className="landing-card landing-card-glow relative overflow-hidden rounded-3xl border border-primary/40 bg-[linear-gradient(120deg,rgba(255,72,255,0.20),rgba(40,28,38,0.94)_46%,rgba(156,0,158,0.18))] p-1 shadow-[0_28px_90px_rgba(255,72,255,0.16)]">
+              <div className="absolute -left-16 -top-20 h-64 w-64 rounded-full bg-primary/20 blur-3xl" />
+              <div className="absolute -bottom-24 right-0 h-72 w-72 rounded-full bg-[#9c009e]/20 blur-3xl" />
+              <div className="relative grid gap-8 rounded-[1.35rem] bg-[#120b12]/75 p-6 backdrop-blur-xl md:p-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+                <div>
+                  <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/35 bg-primary/10 px-4 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-primary">
+                    <span className="material-symbols-outlined text-base">celebration</span>
+                    Aulas gratuitas disponíveis
+                  </div>
+                  <h2 className="max-w-2xl font-playfair text-3xl font-bold leading-tight text-on-surface md:text-5xl">
+                    Comece a aprender <span className="text-primary italic">sem pagar</span>
+                  </h2>
+                  <p className="mt-4 max-w-xl text-sm leading-relaxed text-on-surface-variant md:text-base">
+                    Assista às nossas aulas públicas, conheça a metodologia dos explicadores e avance nos seus estudos. Basta criar uma conta gratuita.
+                  </p>
+                  <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                    <Link
+                      href="/register"
+                      className="magenta-gradient inline-flex items-center justify-center gap-2 rounded-xl px-7 py-3.5 text-sm font-black text-black shadow-xl shadow-primary/25 transition-all hover:scale-[1.02] hover:brightness-110"
+                    >
+                      Assistir aulas grátis
+                      <span className="material-symbols-outlined text-lg">play_circle</span>
+                    </Link>
+                    <Link
+                      href="/login"
+                      className="inline-flex items-center justify-center rounded-xl border border-primary/30 bg-primary/5 px-7 py-3.5 text-sm font-bold text-primary transition-colors hover:border-primary hover:bg-primary/10"
+                    >
+                      Já tenho conta
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute -right-2 -top-4 z-10 flex h-20 w-20 rotate-6 flex-col items-center justify-center rounded-2xl bg-primary text-center text-black shadow-2xl shadow-primary/30">
+                    <strong className="text-3xl leading-none">{catalog.stats.freeLessons}</strong>
+                    <span className="mt-1 text-[9px] font-black uppercase tracking-wider">
+                      {catalog.stats.freeLessons === 1 ? "aula grátis" : "aulas grátis"}
+                    </span>
+                  </div>
+                  <div className="space-y-3 rounded-2xl border border-white/10 bg-black/25 p-4 pt-16 sm:p-6 sm:pt-16">
+                    {catalog.publicLessons.length > 0 ? catalog.publicLessons.slice(0, 3).map((lesson) => (
+                      <div
+                        key={lesson.id}
+                        className="flex items-center gap-4 rounded-xl border border-primary/10 bg-white/[0.035] p-4 transition-colors hover:border-primary/30 hover:bg-primary/[0.06]"
+                      >
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                          <span className="material-symbols-outlined">play_arrow</span>
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-on-surface">{lesson.title}</p>
+                          <p className="mt-1 truncate text-xs text-on-surface-variant">{lesson.course_name}</p>
+                        </div>
+                        <span className="ml-auto rounded-full bg-success/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-success">
+                          Grátis
+                        </span>
+                      </div>
+                    )) : (
+                      <div className="flex items-center gap-4 rounded-xl border border-primary/10 bg-white/[0.035] p-5">
+                        <span className="material-symbols-outlined text-3xl text-primary">video_library</span>
+                        <p className="text-sm text-on-surface-variant">
+                          Novas aulas gratuitas serão publicadas em breve.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
